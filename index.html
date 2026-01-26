@@ -528,7 +528,7 @@
                     
                     <!-- Mode 2: Historical by Vessel Name -->
                     <div class="search-form" id="form-historical">
-                        <p class="form-hint">輸入船隻名稱及時間範圍，查詢該船隻的歷史進出港記錄。</p>
+                        <p class="form-hint">輸入船隻名稱及時間範圍（最多5天），查詢該船隻的歷史進出港記錄。</p>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="vesselNameHistorical">船隻名稱</label>
@@ -613,7 +613,7 @@
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/92cf7f6f-be58-4072-84ff-3b8c612bf204" target="_blank">在過去三十六小時抵港的船隻</a><br>
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/7cafe2bc-066f-4665-b527-d4b792f96e4a" target="_blank">在過去三十六小時離港的船隻</a>
             </div>
-            <div class="footer-version">Version: V5.2</div>
+            <div class="footer-version">Version: V5.3</div>
         </div>
     </footer>
 
@@ -626,7 +626,8 @@
             corsProxies: [
                 'https://api.allorigins.win/raw?url=',
                 'https://corsproxy.io/?'
-            ]
+            ],
+            maxDays: 5
         };
         
         let currentData = [];
@@ -695,6 +696,24 @@
             document.getElementById(`form-${mode}`).classList.add('active');
             
             clearResults();
+        }
+        
+        // Validate date range (max 5 days)
+        function validateDateRange(startDate, endDate) {
+            if (!startDate || !endDate) {
+                return { valid: false, error: '請選擇開始和結束日期' };
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                return { valid: false, error: '開始日期必須早於結束日期' };
+            }
+            
+            const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            if (daysDiff > CONFIG.maxDays) {
+                return { valid: false, error: `日期範圍不可超過${CONFIG.maxDays}天` };
+            }
+            
+            return { valid: true, days: daysDiff };
         }
         
         // Main search function
@@ -782,19 +801,16 @@
                 return;
             }
             
-            if (!startDate || !endDate) {
-                showError('請選擇日期範圍');
-                return;
-            }
-            
-            if (new Date(startDate) > new Date(endDate)) {
-                showError('開始日期必須早於結束日期');
+            // Validate date range
+            const validation = validateDateRange(startDate, endDate);
+            if (!validation.valid) {
+                showError(validation.error);
                 return;
             }
             
             showLoading('正在獲取歷史資料...');
             logHeader(`歷史資料查詢: ${vesselName}`);
-            log(`日期範圍: ${startDate} 至 ${endDate}`, 'info');
+            log(`日期範圍: ${startDate} 至 ${endDate} (${validation.days} 天)`, 'info');
             
             const allData = await fetchHistoricalDataRange(startDate, endDate, 'both');
             
@@ -814,26 +830,16 @@
             const endDate = document.getElementById('endDateBydate').value;
             const dataType = document.getElementById('dataTypeBydate').value;
             
-            if (!startDate || !endDate) {
-                showError('請選擇開始和結束日期');
-                return;
-            }
-            
-            if (new Date(startDate) > new Date(endDate)) {
-                showError('開始日期必須早於結束日期');
-                return;
-            }
-            
-            // Check 5 day limit
-            const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
-            if (daysDiff > 5) {
-                showError('日期範圍不可超過5天');
+            // Validate date range
+            const validation = validateDateRange(startDate, endDate);
+            if (!validation.valid) {
+                showError(validation.error);
                 return;
             }
             
             showLoading('正在獲取資料...');
             logHeader(`按日期查詢: ${startDate} 至 ${endDate}`);
-            log(`共 ${daysDiff} 天`, 'info');
+            log(`共 ${validation.days} 天`, 'info');
             
             const allData = await fetchHistoricalDataRange(startDate, endDate, dataType);
             
