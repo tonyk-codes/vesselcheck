@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HK Vessel Search</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .search-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+        
+        .search-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #495057;
+            font-size: 0.95em;
+        }
+        
+        .input-group input, .input-group select {
+            padding: 12px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+        
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-search {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+        
+        .btn-search:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-clear {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-clear:hover {
+            background: #5a6268;
+        }
+        
+        .btn-export {
+            background: #28a745;
+            color: white;
+        }
+        
+        .btn-export:hover {
+            background: #218838;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .results-section {
+            padding: 30px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            flex: 1;
+            min-width: 200px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .stat-card h3 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+        
+        .stat-card p {
+            opacity: 0.9;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #f5c6cb;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            display: none;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            display: none;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95em;
+        }
+        
+        thead {
+            background: #f8f9fa;
+            position: sticky;
+            top: 0;
+        }
+        
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+            white-space: nowrap;
+        }
+        
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        tbody tr {
+            transition: background 0.2s;
+        }
+        
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .highlight {
+            background: #fff3cd;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 768px) {
+            .search-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .stats {
+                flex-direction: column;
+            }
+            
+            table {
+                font-size: 0.85em;
+            }
+            
+            th, td {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚢 Hong Kong Vessel Search</h1>
+            <p>Search vessel arrivals and departures data from HK Marine Department</p>
+        </header>
+        
+        <div class="search-section">
+            <div class="search-grid">
+                <div class="input-group">
+                    <label for="startDate">📅 Start Date</label>
+                    <input type="date" id="startDate" value="2026-01-01">
+                </div>
+                
+                <div class="input-group">
+                    <label for="endDate">📅 End Date</label>
+                    <input type="date" id="endDate" value="2026-01-26">
+                </div>
+                
+                <div class="input-group">
+                    <label for="vesselName">🚢 Vessel Name (optional)</label>
+                    <input type="text" id="vesselName" placeholder="Enter vessel name...">
+                </div>
+                
+                <div class="input-group">
+                    <label for="movementType">⚓ Movement Type</label>
+                    <select id="movementType">
+                        <option value="">All</option>
+                        <option value="arrival">Arrival</option>
+                        <option value="departure">Departure</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn-search" onclick="searchVessels()">
+                    <span>🔍</span> Search Vessels
+                </button>
+                <button class="btn-clear" onclick="clearSearch()">
+                    Clear
+                </button>
+                <button class="btn-export" onclick="exportToCSV()" id="exportBtn" disabled>
+                    <span>📥</span> Export CSV
+                </button>
+            </div>
+        </div>
+        
+        <div class="results-section">
+            <div class="stats" id="stats" style="display: none;"></div>
+            
+            <div class="error-message" id="errorMessage"></div>
+            
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Fetching vessel data from API...</p>
+            </div>
+            
+            <div class="no-results" id="noResults">
+                <h3>📭 No Results Found</h3>
+                <p>Try adjusting your search criteria</p>
+            </div>
+            
+            <div class="table-container" id="tableContainer">
+                <table id="resultsTable">
+                    <thead id="tableHead"></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = [];
+        
+        // Search vessels function
+        async function searchVessels() {
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const vesselName = document.getElementById('vesselName').value.toLowerCase().trim();
+            const movementType = document.getElementById('movementType').value;
+            
+            // Validation
+            if (!startDate || !endDate) {
+                showError('Please select both start and end dates');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                showError('Start date must be before end date');
+                return;
+            }
+            
+            // Show loading
+            showLoading();
+            hideError();
+            
+            try {
+                // Fetch data for date range
+                const data = await fetchVesselData(startDate, endDate);
+                
+                // Filter data
+                let filtered = data.filter(record => {
+                    let matchesVessel = !vesselName || 
+                        (record.vesselName && record.vesselName.toLowerCase().includes(vesselName));
+                    
+                    let matchesType = !movementType || 
+                        (record.movementType && record.movementType.toLowerCase() === movementType);
+                    
+                    return matchesVessel && matchesType;
+                });
+                
+                currentData = filtered;
+                displayResults(filtered);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError(`Failed to fetch data: ${error.message}`);
+                hideLoading();
+            }
+        }
+        
+        // Fetch vessel data from API
+        async function fetchVesselData(startDate, endDate) {
+            // Generate dates between start and end
+            const dates = getDatesInRange(startDate, endDate);
+            let allData = [];
+            
+            for (const date of dates) {
+                try {
+                    // Format: YYYYMMDD
+                    const dateStr = date.replace(/-/g, '');
+                    
+                    // HK data.gov.hk API for historical data
+                    // Adjust this URL based on actual API endpoint
+                    const apiUrl = `https://api.data.gov.hk/v1/historical-archive/get-file?url=https://data.gov.hk/en-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/${dateStr}.xml&time=${dateStr}`;
+                    
+                    const response = await fetch(apiUrl);
+                    
+                    if (response.ok) {
+                        const xmlText = await response.text();
+                        const parsedData = parseXML(xmlText);
+                        allData = allData.concat(parsedData);
+                    }
+                } catch (error) {
+                    console.warn(`Failed to fetch data for ${date}:`, error);
+                }
+            }
+            
+            return allData;
+        }
+        
+        // Parse XML data
+        function parseXML(xmlText) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+            
+            // Adjust parsing based on actual XML structure
+            const vessels = xmlDoc.getElementsByTagName('vessel');
+            const data = [];
+            
+            for (let vessel of vessels) {
+                const record = {
+                    vesselName: getXMLValue(vessel, 'vessel_name'),
+                    movementType: getXMLValue(vessel, 'movement_type'),
+                    date: getXMLValue(vessel, 'date'),
+                    time: getXMLValue(vessel, 'time'),
+                    location: getXMLValue(vessel, 'location'),
+                    flag: getXMLValue(vessel, 'flag'),
+                    agent: getXMLValue(vessel, 'agent'),
+                    callSign: getXMLValue(vessel, 'call_sign')
+                };
+                data.push(record);
+            }
+            
+            return data;
+        }
+        
+        // Get XML tag value
+        function getXMLValue(parent, tagName) {
+            const element = parent.getElementsByTagName(tagName)[0];
+            return element ? element.textContent : '';
+        }
+        
+        // Get dates in range
+        function getDatesInRange(startDate, endDate) {
+            const dates = [];
+            const current = new Date(startDate);
+            const end = new Date(endDate);
+            
+            while (current <= end) {
+                dates.push(current.toISOString().split('T')[0]);
+                current.setDate(current.getDate() + 1);
+            }
+            
+            return dates;
+        }
+        
+        // Display results
+        function displayResults(data) {
+            hideLoading();
+            
+            if (data.length === 0) {
+                showNoResults();
+                return;
+            }
+            
+            // Show stats
+            displayStats(data);
+            
+            // Create table
+            createTable(data);
+            
+            // Enable export button
+            document.getElementById('exportBtn').disabled = false;
+        }
+        
+        // Display statistics
+        function displayStats(data) {
+            const stats = document.getElementById('stats');
+            const arrivals = data.filter(r => r.movementType.toLowerCase() === 'arrival').length;
+            const departures = data.filter(r => r.movementType.toLowerCase() === 'departure').length;
+            
+            stats.innerHTML = `
+                <div class="stat-card">
+                    <h3>${data.length}</h3>
+                    <p>Total Records</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${arrivals}</h3>
+                    <p>Arrivals</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${departures}</h3>
+                    <p>Departures</p>
+                </div>
+            `;
+            stats.style.display = 'flex';
+        }
+        
+        // Create table
+        function createTable(data) {
+            const tableContainer = document.getElementById('tableContainer');
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            const searchTerm = document.getElementById('vesselName').value.toLowerCase();
+            
+            // Clear existing
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+            
+            if (data.length === 0) return;
+            
+            // Create headers
+            const headers = Object.keys(data[0]);
+            const headerRow = document.createElement('tr');
+            headers.forEach(header => {
+                const th = document.createElement('th');
+                th.textContent = header.replace(/([A-Z])/g, ' $1').trim().toUpperCase();
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+            
+            // Create rows
+            data.forEach(record => {
+                const row = document.createElement('tr');
+                headers.forEach(header => {
+                    const td = document.createElement('td');
+                    const value = record[header] || '-';
+                    td.textContent = value;
+                    
+                    // Highlight search term
+                    if (searchTerm && value.toString().toLowerCase().includes(searchTerm)) {
+                        td.classList.add('highlight');
+                    }
+                    
+                    row.appendChild(td);
+                });
+                tableBody.appendChild(row);
+            });
+            
+            tableContainer.style.display = 'block';
+        }
+        
+        // Export to CSV
+        function exportToCSV() {
+            if (currentData.length === 0) return;
+            
+            const headers = Object.keys(currentData[0]);
+            let csv = headers.join(',') + '\n';
+            
+            currentData.forEach(row => {
+                const values = headers.map(header => {
+                    const value = row[header] || '';
+                    return `"${value}"`;
+                });
+                csv += values.join(',') + '\n';
+            });
+            
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `vessel-data-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Clear search
+        function clearSearch() {
+            document.getElementById('vesselName').value = '';
+            document.getElementById('movementType').value = '';
+            document.getElementById('startDate').value = '2026-01-01';
+            document.getElementById('endDate').value = '2026-01-26';
+            currentData = [];
+            
+            document.getElementById('tableContainer').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('exportBtn').disabled = true;
+            hideError();
+            hideNoResults();
+        }
+        
+        // UI helpers
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('tableContainer').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+            hideNoResults();
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        function showNoResults() {
+            document.getElementById('noResults').style.display = 'block';
+            document.getElementById('tableContainer').style.display = 'none';
+            document.getElementById('stats').style.display = 'none';
+        }
+        
+        function hideNoResults() {
+            document.getElementById('noResults').style.display = 'none';
+        }
+        
+        // Initialize dates
+        window.onload = function() {
+            const today = new Date().toISOString().split('T')[0];
+            const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            document.getElementById('startDate').value = weekAgo;
+            document.getElementById('endDate').value = today;
+        };
+    </script>
+</body>
+</html>
