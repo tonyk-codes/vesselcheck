@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>香港船隻查詢系統 - API 測試</title>
+    <title>海事處船隻進出港資料查詢</title>
     <style>
         * {
             margin: 0;
@@ -17,20 +17,37 @@
             color: #1a202c;
             font-size: 14px;
             line-height: 1.5;
-            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
         
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            padding: 20px;
+            width: 100%;
         }
         
-        h1 {
-            font-size: 20px;
-            margin-bottom: 20px;
-            color: #1a365d;
+        /* Header */
+        header {
+            background: #1a365d;
+            color: white;
+            padding: 16px 0;
         }
         
+        header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        /* Main Content */
+        main {
+            flex: 1;
+            padding: 20px 0;
+        }
+        
+        /* Card */
         .card {
             background: white;
             border-radius: 8px;
@@ -51,41 +68,105 @@
             padding: 16px;
         }
         
-        .test-item {
+        /* Search Tabs */
+        .search-tabs {
+            display: flex;
+            gap: 8px;
             margin-bottom: 16px;
-            padding: 12px;
-            background: #f7fafc;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
+            flex-wrap: wrap;
         }
         
-        .test-item h3 {
+        .tab-btn {
+            padding: 8px 16px;
             font-size: 13px;
-            margin-bottom: 8px;
-            color: #2d3748;
+            font-weight: 500;
+            border: 1px solid #e2e8f0;
+            background: white;
+            color: #4a5568;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
         }
         
-        .test-item code {
+        .tab-btn:hover {
+            border-color: #3182ce;
+            color: #3182ce;
+        }
+        
+        .tab-btn.active {
+            background: #3182ce;
+            border-color: #3182ce;
+            color: white;
+        }
+        
+        /* Search Form */
+        .search-form {
+            display: none;
+        }
+        
+        .search-form.active {
             display: block;
-            font-size: 11px;
-            background: #1a202c;
-            color: #68d391;
-            padding: 8px;
-            border-radius: 4px;
-            margin-bottom: 10px;
-            word-break: break-all;
-            white-space: pre-wrap;
+        }
+        
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4a5568;
+            margin-bottom: 6px;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 10px 12px;
+            font-size: 13px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            transition: all 0.2s;
+            background: white;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #3182ce;
+            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+        }
+        
+        .form-hint {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 16px;
+        }
+        
+        /* Buttons */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
         }
         
         .btn {
-            padding: 8px 16px;
-            font-size: 12px;
+            padding: 10px 20px;
+            font-size: 13px;
             font-weight: 500;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
-            margin-right: 8px;
-            margin-bottom: 8px;
+            transition: all 0.2s;
         }
         
         .btn-primary {
@@ -93,9 +174,26 @@
             color: white;
         }
         
+        .btn-primary:hover {
+            background: #2b6cb0;
+        }
+        
         .btn-secondary {
             background: #718096;
             color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #4a5568;
+        }
+        
+        .btn-success {
+            background: #38a169;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #2f855a;
         }
         
         .btn:disabled {
@@ -103,544 +201,913 @@
             cursor: not-allowed;
         }
         
-        .result-box {
-            margin-top: 12px;
-            padding: 12px;
-            border-radius: 4px;
-            font-size: 12px;
-            display: none;
+        /* Stats */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
         }
         
-        .result-box.show {
+        .stat-item {
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .stat-item .value {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a365d;
+        }
+        
+        .stat-item .label {
+            font-size: 11px;
+            color: #718096;
+            margin-top: 2px;
+        }
+        
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+        
+        .loading.show {
             display: block;
         }
         
-        .result-box.success {
-            background: #c6f6d5;
-            border: 1px solid #9ae6b4;
-            color: #276749;
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 3px solid #e2e8f0;
+            border-top-color: #3182ce;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
         }
         
-        .result-box.error {
-            background: #fed7d7;
-            border: 1px solid #feb2b2;
-            color: #c53030;
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
         
-        .result-box.info {
-            background: #e2e8f0;
-            border: 1px solid #cbd5e0;
-            color: #2d3748;
-        }
-        
-        .xml-preview {
-            max-height: 300px;
-            overflow-y: auto;
-            background: #1a202c;
-            color: #e2e8f0;
-            padding: 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 11px;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin-top: 12px;
-        }
-        
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-            margin-top: 12px;
-        }
-        
-        .data-table th, .data-table td {
-            padding: 8px;
-            border: 1px solid #e2e8f0;
-            text-align: left;
-        }
-        
-        .data-table th {
-            background: #edf2f7;
-            font-weight: 600;
-        }
-        
-        .data-table tbody tr:hover {
-            background: #f7fafc;
-        }
-        
-        .status {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-        }
-        
-        .status-success { background: #c6f6d5; color: #276749; }
-        .status-error { background: #fed7d7; color: #c53030; }
-        .status-pending { background: #fefcbf; color: #975a16; }
-        
-        .log-panel {
-            background: #1a202c;
-            color: #a0aec0;
-            padding: 12px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 11px;
-            max-height: 200px;
-            overflow-y: auto;
-            margin-top: 16px;
-        }
-        
-        .log-panel .log-entry {
-            margin-bottom: 4px;
-        }
-        
-        .log-panel .log-time {
+        .loading p {
+            font-size: 13px;
             color: #718096;
         }
         
-        .log-panel .log-success {
-            color: #68d391;
+        /* Messages */
+        .message {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 13px;
+            display: none;
         }
         
-        .log-panel .log-error {
-            color: #fc8181;
+        .message.show {
+            display: block;
         }
         
-        .log-panel .log-info {
-            color: #63b3ed;
+        .message.error {
+            background: #fed7d7;
+            color: #c53030;
+            border-left: 3px solid #c53030;
+        }
+        
+        .message.success {
+            background: #c6f6d5;
+            color: #276749;
+            border-left: 3px solid #38a169;
+        }
+        
+        /* Table */
+        .table-wrapper {
+            overflow-x: auto;
+            display: none;
+        }
+        
+        .table-wrapper.show {
+            display: block;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        thead {
+            background: #edf2f7;
+        }
+        
+        th {
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+            white-space: nowrap;
+            font-size: 11px;
+        }
+        
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1a202c;
+        }
+        
+        tbody tr:hover {
+            background: #f7fafc;
+        }
+        
+        .highlight {
+            background: #fefcbf !important;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            border-radius: 4px;
+        }
+        
+        .badge-arrival {
+            background: #c6f6d5;
+            color: #276749;
+        }
+        
+        .badge-departure {
+            background: #fed7d7;
+            color: #c53030;
+        }
+        
+        /* No Results */
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .no-results.show {
+            display: block;
+        }
+        
+        .no-results h3 {
+            font-size: 14px;
+            color: #4a5568;
+            margin-bottom: 8px;
+        }
+        
+        .no-results p {
+            font-size: 12px;
+            color: #718096;
+        }
+        
+        /* Footer */
+        footer {
+            background: #2d3748;
+            color: #a0aec0;
+            padding: 16px 0;
+            margin-top: auto;
+        }
+        
+        footer .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        
+        .footer-links {
+            font-size: 12px;
+            line-height: 1.8;
+        }
+        
+        .footer-links a {
+            color: #90cdf4;
+            text-decoration: none;
+        }
+        
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        
+        .footer-version {
+            font-size: 12px;
+            color: #718096;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .search-tabs {
+                flex-direction: column;
+            }
+            
+            .tab-btn {
+                text-align: center;
+            }
+            
+            .btn-group {
+                flex-wrap: wrap;
+            }
+            
+            .btn {
+                flex: 1;
+                min-width: 100px;
+                text-align: center;
+            }
+            
+            footer .container {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .footer-version {
+                align-self: flex-start;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>⚓ 香港船隻查詢系統 - API 連接測試</h1>
-        
-        <!-- Test 1: Direct XML URL -->
-        <div class="card">
-            <div class="card-header">測試 1: 直接獲取 XML 資料 (即時資料)</div>
-            <div class="card-body">
-                <div class="test-item">
-                    <h3>抵港船隻 (RP05005i.XML)</h3>
-                    <code>https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML</code>
-                    <button class="btn btn-primary" onclick="testDirectFetch('arrival')">直接獲取</button>
-                    <button class="btn btn-secondary" onclick="testWithProxy('arrival')">使用 CORS Proxy</button>
-                    <div class="result-box" id="result-arrival"></div>
+    <header>
+        <div class="container">
+            <h1>海事處船隻進出港資料查詢</h1>
+        </div>
+    </header>
+    
+    <main>
+        <div class="container">
+            <!-- Search Card -->
+            <div class="card">
+                <div class="card-header">查詢選項</div>
+                <div class="card-body">
+                    <!-- Search Mode Tabs -->
+                    <div class="search-tabs">
+                        <button class="tab-btn active" data-mode="realtime" onclick="switchMode('realtime')">
+                            即時查詢（過去36小時）
+                        </button>
+                        <button class="tab-btn" data-mode="historical" onclick="switchMode('historical')">
+                            歷史資料查詢
+                        </button>
+                        <button class="tab-btn" data-mode="bydate" onclick="switchMode('bydate')">
+                            按日期列出所有船隻
+                        </button>
+                    </div>
+                    
+                    <!-- Mode 1: Real-time (Last 36 hours) -->
+                    <div class="search-form active" id="form-realtime">
+                        <p class="form-hint">查詢過去36小時內抵港或離港的船隻資料。輸入船隻名稱可顯示其抵港/離港時間。</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="vesselNameRealtime">船隻名稱（可選）</label>
+                                <input type="text" id="vesselNameRealtime" placeholder="輸入船隻名稱...">
+                            </div>
+                            <div class="form-group">
+                                <label for="dataTypeRealtime">資料類型</label>
+                                <select id="dataTypeRealtime">
+                                    <option value="both">抵港及離港</option>
+                                    <option value="arrival">僅抵港</option>
+                                    <option value="departure">僅離港</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mode 2: Historical by Vessel Name -->
+                    <div class="search-form" id="form-historical">
+                        <p class="form-hint">輸入船隻名稱及時間範圍，查詢該船隻的歷史進出港記錄。</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="vesselNameHistorical">船隻名稱 *</label>
+                                <input type="text" id="vesselNameHistorical" placeholder="輸入船隻名稱..." required>
+                            </div>
+                            <div class="form-group">
+                                <label for="startDateHistorical">開始日期</label>
+                                <input type="date" id="startDateHistorical">
+                            </div>
+                            <div class="form-group">
+                                <label for="endDateHistorical">結束日期</label>
+                                <input type="date" id="endDateHistorical">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Mode 3: List all vessels by date -->
+                    <div class="search-form" id="form-bydate">
+                        <p class="form-hint">選擇日期及時間，列出該時段所有進出港船隻。</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="dateBydate">日期 *</label>
+                                <input type="date" id="dateBydate" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="timeBydate">時間</label>
+                                <select id="timeBydate">
+                                    <option value="0000">00:00</option>
+                                    <option value="0100">01:00</option>
+                                    <option value="0200">02:00</option>
+                                    <option value="0300">03:00</option>
+                                    <option value="0400">04:00</option>
+                                    <option value="0500">05:00</option>
+                                    <option value="0600">06:00</option>
+                                    <option value="0700">07:00</option>
+                                    <option value="0800">08:00</option>
+                                    <option value="0900">09:00</option>
+                                    <option value="1000">10:00</option>
+                                    <option value="1100">11:00</option>
+                                    <option value="1200">12:00</option>
+                                    <option value="1300">13:00</option>
+                                    <option value="1400">14:00</option>
+                                    <option value="1500">15:00</option>
+                                    <option value="1600">16:00</option>
+                                    <option value="1700">17:00</option>
+                                    <option value="1800">18:00</option>
+                                    <option value="1900">19:00</option>
+                                    <option value="2000">20:00</option>
+                                    <option value="2100">21:00</option>
+                                    <option value="2200">22:00</option>
+                                    <option value="2300">23:00</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="dataTypeBydate">資料類型</label>
+                                <select id="dataTypeBydate">
+                                    <option value="both">抵港及離港</option>
+                                    <option value="arrival">僅抵港</option>
+                                    <option value="departure">僅離港</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="performSearch()">搜尋</button>
+                        <button class="btn btn-secondary" onclick="clearSearch()">清除</button>
+                        <button class="btn btn-success" id="exportBtn" onclick="exportToCSV()" disabled>匯出 CSV</button>
+                    </div>
                 </div>
-                
-                <div class="test-item">
-                    <h3>離港船隻 (RP05006i.XML)</h3>
-                    <code>https://www.mardep.gov.hk/e_files/en/opendata/RP05006i.XML</code>
-                    <button class="btn btn-primary" onclick="testDirectFetch('departure')">直接獲取</button>
-                    <button class="btn btn-secondary" onclick="testWithProxy('departure')">使用 CORS Proxy</button>
-                    <div class="result-box" id="result-departure"></div>
+            </div>
+            
+            <!-- Results Card -->
+            <div class="card">
+                <div class="card-header">搜尋結果</div>
+                <div class="card-body">
+                    <div class="message error" id="errorMessage"></div>
+                    <div class="message success" id="successMessage"></div>
+                    
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p id="loadingText">正在獲取資料...</p>
+                    </div>
+                    
+                    <div class="stats-row" id="stats" style="display: none;"></div>
+                    
+                    <div class="no-results" id="noResults">
+                        <h3>沒有找到結果</h3>
+                        <p>請嘗試調整搜尋條件</p>
+                    </div>
+                    
+                    <div class="table-wrapper" id="tableWrapper">
+                        <table>
+                            <thead id="tableHead"></thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
-        
-        <!-- Test 2: Historical API -->
-        <div class="card">
-            <div class="card-header">測試 2: 歷史資料 API (data.gov.hk)</div>
-            <div class="card-body">
-                <div class="test-item">
-                    <h3>歷史抵港資料 (使用你提供的確切 URL)</h3>
-                    <code>https://api.data.gov.hk/v1/historical-archive/get-file?url=https%3A%2F%2Fwww.mardep.gov.hk%2Fe_files%2Fen%2Fopendata%2FRP05005i.XML&time=20260125-1200</code>
-                    <button class="btn btn-primary" onclick="testHistoricalAPI()">測試歷史 API</button>
-                    <div class="result-box" id="result-historical"></div>
-                </div>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/92cf7f6f-be58-4072-84ff-3b8c612bf204" target="_blank">在過去三十六小時抵港的船隻</a><br>
+                <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/7cafe2bc-066f-4665-b527-d4b792f96e4a" target="_blank">在過去三十六小時離港的船隻</a>
             </div>
+            <div class="footer-version">Version: V5</div>
         </div>
-        
-        <!-- Test 3: Different URL formats -->
-        <div class="card">
-            <div class="card-header">測試 3: 不同的 URL 格式</div>
-            <div class="card-body">
-                <div class="test-item">
-                    <h3>測試多種可能的 URL</h3>
-                    <button class="btn btn-primary" onclick="testAllURLFormats()">測試所有 URL 格式</button>
-                    <div class="result-box" id="result-formats"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Test 4: Custom URL Test -->
-        <div class="card">
-            <div class="card-header">測試 4: 自訂 URL 測試</div>
-            <div class="card-body">
-                <div class="test-item">
-                    <h3>輸入任何 URL 測試</h3>
-                    <input type="text" id="customUrl" style="width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 12px;" 
-                           value="https://api.data.gov.hk/v1/historical-archive/get-file?url=https%3A%2F%2Fwww.mardep.gov.hk%2Fe_files%2Fen%2Fopendata%2FRP05005i.XML&time=20260125-1200">
-                    <button class="btn btn-primary" onclick="testCustomURL()">測試此 URL</button>
-                    <button class="btn btn-secondary" onclick="testCustomWithProxy()">使用 Proxy 測試</button>
-                    <div class="result-box" id="result-custom"></div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Parsed Data Display -->
-        <div class="card">
-            <div class="card-header">解析後的資料</div>
-            <div class="card-body">
-                <div id="parsed-data">
-                    <p style="color: #718096; font-size: 12px;">執行上方測試後，解析的資料會顯示在這裡。</p>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Log Panel -->
-        <div class="card">
-            <div class="card-header">執行日誌</div>
-            <div class="card-body">
-                <button class="btn btn-secondary" onclick="clearLog()">清除日誌</button>
-                <div class="log-panel" id="logPanel">
-                    <div class="log-entry"><span class="log-info">系統就緒，等待測試...</span></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    </footer>
 
     <script>
-        // URLs to test
-        const URLS = {
-            arrivalDirect: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML',
-            departureDirect: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05006i.XML',
-            historicalBase: 'https://api.data.gov.hk/v1/historical-archive/get-file'
+        // Configuration
+        const CONFIG = {
+            arrivalUrl: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML',
+            departureUrl: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05006i.XML',
+            historicalApiBase: 'https://api.data.gov.hk/v1/historical-archive/get-file',
+            corsProxies: [
+                'https://api.allorigins.win/raw?url=',
+                'https://corsproxy.io/?'
+            ]
         };
         
-        // CORS Proxies to try
-        const CORS_PROXIES = [
-            { name: 'allorigins', url: 'https://api.allorigins.win/raw?url=' },
-            { name: 'corsproxy.io', url: 'https://corsproxy.io/?' },
-            { name: 'cors-anywhere', url: 'https://cors-anywhere.herokuapp.com/' }
-        ];
+        let currentData = [];
+        let currentMode = 'realtime';
         
-        // Logging
-        function log(message, type = 'info') {
-            const logPanel = document.getElementById('logPanel');
-            const time = new Date().toLocaleTimeString();
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
-            logPanel.appendChild(entry);
-            logPanel.scrollTop = logPanel.scrollHeight;
-            console.log(`[${type}] ${message}`);
-        }
-        
-        function clearLog() {
-            document.getElementById('logPanel').innerHTML = '<div class="log-entry"><span class="log-info">日誌已清除</span></div>';
-        }
-        
-        function showResult(elementId, message, type) {
-            const el = document.getElementById(elementId);
-            el.className = `result-box show ${type}`;
-            el.innerHTML = message;
-        }
-        
-        // Test 1: Direct fetch
-        async function testDirectFetch(type) {
-            const url = type === 'arrival' ? URLS.arrivalDirect : URLS.departureDirect;
-            const resultId = `result-${type}`;
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
             
-            log(`嘗試直接獲取: ${url}`);
-            showResult(resultId, '正在獲取...', 'info');
+            document.getElementById('startDateHistorical').value = yesterday;
+            document.getElementById('endDateHistorical').value = today;
+            document.getElementById('dateBydate').value = today;
+        });
+        
+        // Switch search mode
+        function switchMode(mode) {
+            currentMode = mode;
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            
+            document.querySelectorAll('.search-form').forEach(form => {
+                form.classList.remove('active');
+            });
+            document.getElementById(`form-${mode}`).classList.add('active');
+            
+            clearResults();
+        }
+        
+        // Main search function
+        async function performSearch() {
+            clearMessages();
+            clearResults();
             
             try {
-                const response = await fetch(url);
-                log(`回應狀態: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
-                
-                if (response.ok) {
-                    const text = await response.text();
-                    log(`獲取成功! 資料長度: ${text.length} 字元`, 'success');
-                    showResult(resultId, `<strong>✅ 成功!</strong><br>狀態: ${response.status}<br>資料長度: ${text.length} 字元<div class="xml-preview">${escapeHtml(text.substring(0, 2000))}${text.length > 2000 ? '...(截斷)' : ''}</div>`, 'success');
-                    parseAndDisplayData(text, type);
-                } else {
-                    showResult(resultId, `<strong>❌ 失敗</strong><br>狀態: ${response.status} ${response.statusText}`, 'error');
+                switch (currentMode) {
+                    case 'realtime':
+                        await searchRealtime();
+                        break;
+                    case 'historical':
+                        await searchHistorical();
+                        break;
+                    case 'bydate':
+                        await searchByDate();
+                        break;
                 }
             } catch (error) {
-                log(`錯誤: ${error.message}`, 'error');
-                showResult(resultId, `<strong>❌ 錯誤</strong><br>${error.message}<br><br>這可能是 CORS 問題，嘗試使用 Proxy。`, 'error');
+                console.error('Search error:', error);
+                showError(`搜尋時發生錯誤：${error.message}`);
+                hideLoading();
             }
         }
         
-        // Test with CORS proxy
-        async function testWithProxy(type) {
-            const url = type === 'arrival' ? URLS.arrivalDirect : URLS.departureDirect;
-            const resultId = `result-${type}`;
+        // Mode 1: Real-time search
+        async function searchRealtime() {
+            const vesselName = document.getElementById('vesselNameRealtime').value.trim().toUpperCase();
+            const dataType = document.getElementById('dataTypeRealtime').value;
             
-            showResult(resultId, '正在嘗試不同的 CORS Proxies...', 'info');
+            showLoading('正在獲取即時船隻資料...');
             
-            for (const proxy of CORS_PROXIES) {
-                const proxyUrl = proxy.url + encodeURIComponent(url);
-                log(`嘗試 ${proxy.name}: ${proxyUrl}`);
+            let allData = [];
+            
+            if (dataType === 'both' || dataType === 'arrival') {
+                try {
+                    const arrivalData = await fetchXMLData(CONFIG.arrivalUrl, 'arrival');
+                    allData = allData.concat(arrivalData);
+                } catch (e) {
+                    console.warn('Failed to fetch arrival data:', e);
+                }
+            }
+            
+            if (dataType === 'both' || dataType === 'departure') {
+                try {
+                    const departureData = await fetchXMLData(CONFIG.departureUrl, 'departure');
+                    allData = allData.concat(departureData);
+                } catch (e) {
+                    console.warn('Failed to fetch departure data:', e);
+                }
+            }
+            
+            if (vesselName) {
+                allData = allData.filter(item => 
+                    item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
+                );
+            }
+            
+            displayResults(allData, vesselName);
+        }
+        
+        // Mode 2: Historical search
+        async function searchHistorical() {
+            const vesselName = document.getElementById('vesselNameHistorical').value.trim().toUpperCase();
+            const startDate = document.getElementById('startDateHistorical').value;
+            const endDate = document.getElementById('endDateHistorical').value;
+            
+            if (!vesselName) {
+                showError('請輸入船隻名稱');
+                return;
+            }
+            
+            if (!startDate || !endDate) {
+                showError('請選擇日期範圍');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                showError('開始日期必須早於結束日期');
+                return;
+            }
+            
+            showLoading('正在獲取歷史資料...');
+            
+            const allData = await fetchHistoricalDataRange(startDate, endDate);
+            
+            const filtered = allData.filter(item => 
+                item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
+            );
+            
+            displayResults(filtered, vesselName);
+        }
+        
+        // Mode 3: List by date
+        async function searchByDate() {
+            const date = document.getElementById('dateBydate').value;
+            const time = document.getElementById('timeBydate').value;
+            const dataType = document.getElementById('dataTypeBydate').value;
+            
+            if (!date) {
+                showError('請選擇日期');
+                return;
+            }
+            
+            showLoading('正在獲取資料...');
+            
+            const dateStr = date.replace(/-/g, '');
+            const timeParam = `${dateStr}-${time}`;
+            
+            let allData = [];
+            
+            if (dataType === 'both' || dataType === 'arrival') {
+                try {
+                    const arrivalData = await fetchHistoricalData(CONFIG.arrivalUrl, timeParam, 'arrival');
+                    allData = allData.concat(arrivalData);
+                } catch (e) {
+                    console.warn('Failed to fetch historical arrival data:', e);
+                }
+            }
+            
+            if (dataType === 'both' || dataType === 'departure') {
+                try {
+                    const departureData = await fetchHistoricalData(CONFIG.departureUrl, timeParam, 'departure');
+                    allData = allData.concat(departureData);
+                } catch (e) {
+                    console.warn('Failed to fetch historical departure data:', e);
+                }
+            }
+            
+            displayResults(allData, '');
+        }
+        
+        // Fetch historical data range
+        async function fetchHistoricalDataRange(startDate, endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            let allData = [];
+            
+            const current = new Date(start);
+            let dayCount = 0;
+            const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+            
+            while (current <= end) {
+                dayCount++;
+                const dateStr = current.toISOString().split('T')[0].replace(/-/g, '');
+                const timeParam = `${dateStr}-1200`;
+                
+                showLoading(`正在獲取 ${current.toISOString().split('T')[0]} 的資料 (${dayCount}/${totalDays})...`);
                 
                 try {
-                    const response = await fetch(proxyUrl);
-                    
-                    if (response.ok) {
-                        const text = await response.text();
-                        log(`${proxy.name} 成功! 資料長度: ${text.length}`, 'success');
-                        showResult(resultId, `<strong>✅ 成功 (使用 ${proxy.name})</strong><br>資料長度: ${text.length} 字元<div class="xml-preview">${escapeHtml(text.substring(0, 2000))}${text.length > 2000 ? '...(截斷)' : ''}</div>`, 'success');
-                        parseAndDisplayData(text, type);
-                        return;
-                    } else {
-                        log(`${proxy.name} 失敗: ${response.status}`, 'error');
-                    }
-                } catch (error) {
-                    log(`${proxy.name} 錯誤: ${error.message}`, 'error');
+                    const arrivalData = await fetchHistoricalData(CONFIG.arrivalUrl, timeParam, 'arrival');
+                    arrivalData.forEach(item => item.recordDate = current.toISOString().split('T')[0]);
+                    allData = allData.concat(arrivalData);
+                } catch (e) {
+                    console.warn(`Failed to fetch arrival data for ${dateStr}:`, e);
                 }
+                
+                try {
+                    const departureData = await fetchHistoricalData(CONFIG.departureUrl, timeParam, 'departure');
+                    departureData.forEach(item => item.recordDate = current.toISOString().split('T')[0]);
+                    allData = allData.concat(departureData);
+                } catch (e) {
+                    console.warn(`Failed to fetch departure data for ${dateStr}:`, e);
+                }
+                
+                current.setDate(current.getDate() + 1);
             }
             
-            showResult(resultId, '<strong>❌ 所有 Proxy 都失敗了</strong>', 'error');
+            return allData;
         }
         
-        // Test Historical API
-        async function testHistoricalAPI() {
-            const resultId = 'result-historical';
-            
-            // Use exact URL format from user's examples
-            const url = 'https://api.data.gov.hk/v1/historical-archive/get-file?url=https%3A%2F%2Fwww.mardep.gov.hk%2Fe_files%2Fen%2Fopendata%2FRP05005i.XML&time=20260125-1200';
-            
-            log(`測試歷史 API: ${url}`);
-            showResult(resultId, '正在獲取歷史資料...', 'info');
-            
+        // Fetch historical data
+        async function fetchHistoricalData(rawUrl, timeParam, type) {
+            const historicalUrl = `${CONFIG.historicalApiBase}?url=${encodeURIComponent(rawUrl)}&time=${timeParam}`;
+            return await fetchXMLData(historicalUrl, type);
+        }
+        
+        // Fetch XML data
+        async function fetchXMLData(url, type) {
+            // Try direct fetch first
             try {
                 const response = await fetch(url);
-                log(`回應狀態: ${response.status}`, response.ok ? 'success' : 'error');
-                
                 if (response.ok) {
-                    const text = await response.text();
-                    log(`歷史 API 成功! 資料長度: ${text.length}`, 'success');
-                    showResult(resultId, `<strong>✅ 成功!</strong><br>資料長度: ${text.length} 字元<div class="xml-preview">${escapeHtml(text.substring(0, 2000))}${text.length > 2000 ? '...(截斷)' : ''}</div>`, 'success');
-                    parseAndDisplayData(text, 'arrival');
-                } else {
-                    const errorText = await response.text();
-                    showResult(resultId, `<strong>❌ 失敗</strong><br>狀態: ${response.status}<br>錯誤: ${escapeHtml(errorText)}`, 'error');
+                    const xmlText = await response.text();
+                    return parseVesselXML(xmlText, type);
                 }
-            } catch (error) {
-                log(`歷史 API 錯誤: ${error.message}`, 'error');
-                showResult(resultId, `<strong>❌ 錯誤</strong><br>${error.message}`, 'error');
+            } catch (e) {
+                console.log('Direct fetch failed, trying proxies...');
             }
+            
+            // Try CORS proxies
+            for (const proxy of CONFIG.corsProxies) {
+                try {
+                    const proxyUrl = proxy + encodeURIComponent(url);
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        const xmlText = await response.text();
+                        return parseVesselXML(xmlText, type);
+                    }
+                } catch (e) {
+                    console.log(`Proxy ${proxy} failed`);
+                }
+            }
+            
+            throw new Error('無法獲取資料');
         }
         
-        // Test all URL formats
-        async function testAllURLFormats() {
-            const resultId = 'result-formats';
+        // Parse XML data
+        function parseVesselXML(xmlText, type) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+            const data = [];
             
-            const urlsToTest = [
-                'https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML',
-                'https://www.mardep.gov.hk/e_files/en/opendata/RP05006i.XML',
-                'https://www.mardep.gov.hk/opendata/en/vts_message_files/dat_vat.xml',
-                'https://www.mardep.gov.hk/opendata/en/vts_message_files/dat_vdt.xml',
-                'https://api.data.gov.hk/v1/historical-archive/get-file?url=https%3A%2F%2Fwww.mardep.gov.hk%2Fe_files%2Fen%2Fopendata%2FRP05005i.XML&time=20260125-1200',
-                'https://api.data.gov.hk/v1/historical-archive/get-file?url=https%3A%2F%2Fwww.mardep.gov.hk%2Fe_files%2Fen%2Fopendata%2FRP05006i.XML&time=20260125-1200'
+            const parseError = xmlDoc.querySelector('parsererror');
+            if (parseError) {
+                return data;
+            }
+            
+            const recordSelectors = ['Record', 'record', 'RECORD', 'row', 'Row', 'ROW'];
+            let records = [];
+            
+            for (const selector of recordSelectors) {
+                records = xmlDoc.getElementsByTagName(selector);
+                if (records.length > 0) break;
+            }
+            
+            if (records.length === 0) {
+                const root = xmlDoc.documentElement;
+                if (root && root.children.length > 0) {
+                    records = root.children;
+                }
+            }
+            
+            for (let i = 0; i < records.length; i++) {
+                const record = parseVesselRecord(records[i], type);
+                if (record.vesselName) {
+                    data.push(record);
+                }
+            }
+            
+            return data;
+        }
+        
+        // Parse single record
+        function parseVesselRecord(element, type) {
+            const getVal = (names) => {
+                for (const name of names) {
+                    let el = element.querySelector(name);
+                    if (!el) {
+                        const elements = element.getElementsByTagName(name);
+                        if (elements.length > 0) el = elements[0];
+                    }
+                    if (el && el.textContent) {
+                        return el.textContent.trim();
+                    }
+                }
+                return '';
+            };
+            
+            const vesselName = getVal(['VESSEL_NAME', 'Vessel_Name', 'vessel_name', 'VesselName']);
+            
+            let time = '';
+            if (type === 'arrival') {
+                time = getVal(['ARRIVAL_TIME', 'Arrival_Time', 'arrival_time', 'ArrivalTime']);
+            } else {
+                time = getVal(['ATD_TIME', 'Atd_Time', 'atd_time', 'AtdTime', 'DEPARTURE_TIME']);
+            }
+            
+            const location = type === 'arrival' 
+                ? getVal(['ANCHORAGE', 'Anchorage', 'anchorage', 'LOCATION'])
+                : getVal(['LAST_BERTH', 'Last_Berth', 'last_berth', 'LastBerth']);
+            
+            return {
+                vesselName: vesselName,
+                type: type === 'arrival' ? '抵港' : '離港',
+                time: time,
+                location: location,
+                shipType: getVal(['SHIP_TYPE', 'Ship_Type', 'ship_type', 'ShipType']),
+                callSign: getVal(['CALL_SIGN', 'Call_Sign', 'call_sign', 'CallSign']),
+                agentName: getVal(['AGENT_NAME', 'Agent_Name', 'agent_name', 'AgentName']),
+                remark: getVal(['REMARK', 'Remark', 'remark'])
+            };
+        }
+        
+        // Display results
+        function displayResults(data, searchTerm) {
+            hideLoading();
+            currentData = data;
+            
+            if (data.length === 0) {
+                showNoResults();
+                document.getElementById('exportBtn').disabled = true;
+                return;
+            }
+            
+            hideNoResults();
+            showSuccess(`找到 ${data.length} 筆記錄`);
+            
+            displayStats(data);
+            createTable(data, searchTerm);
+            
+            document.getElementById('exportBtn').disabled = false;
+        }
+        
+        // Display stats
+        function displayStats(data) {
+            const arrivals = data.filter(r => r.type === '抵港').length;
+            const departures = data.filter(r => r.type === '離港').length;
+            
+            const statsHtml = `
+                <div class="stat-item">
+                    <div class="value">${data.length}</div>
+                    <div class="label">總記錄數</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value">${arrivals}</div>
+                    <div class="label">抵港</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value">${departures}</div>
+                    <div class="label">離港</div>
+                </div>
+            `;
+            
+            const stats = document.getElementById('stats');
+            stats.innerHTML = statsHtml;
+            stats.style.display = 'grid';
+        }
+        
+        // Create table
+        function createTable(data, searchTerm) {
+            const tableHead = document.getElementById('tableHead');
+            const tableBody = document.getElementById('tableBody');
+            const tableWrapper = document.getElementById('tableWrapper');
+            
+            tableHead.innerHTML = '';
+            tableBody.innerHTML = '';
+            
+            const columns = [
+                { key: 'vesselName', label: '船隻名稱' },
+                { key: 'type', label: '類型' },
+                { key: 'time', label: '時間' },
+                { key: 'location', label: '位置' },
+                { key: 'shipType', label: '船舶類型' },
+                { key: 'callSign', label: '呼號' },
+                { key: 'agentName', label: '代理' }
             ];
             
-            let results = '<strong>測試結果:</strong><br><br>';
+            if (data.some(item => item.recordDate)) {
+                columns.splice(3, 0, { key: 'recordDate', label: '記錄日期' });
+            }
             
-            for (const url of urlsToTest) {
-                log(`測試: ${url}`);
+            const headerRow = document.createElement('tr');
+            columns.forEach(col => {
+                const th = document.createElement('th');
+                th.textContent = col.label;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+            
+            data.forEach(record => {
+                const row = document.createElement('tr');
                 
-                try {
-                    const response = await fetch(url);
-                    if (response.ok) {
-                        const text = await response.text();
-                        results += `<span class="status status-success">✅ 成功</span> ${url.substring(0, 60)}... (${text.length} 字元)<br>`;
-                        log(`✅ 成功: ${url}`, 'success');
+                columns.forEach(col => {
+                    const td = document.createElement('td');
+                    let value = record[col.key] || '-';
+                    
+                    if (col.key === 'type') {
+                        const badge = document.createElement('span');
+                        badge.className = `badge ${value === '抵港' ? 'badge-arrival' : 'badge-departure'}`;
+                        badge.textContent = value;
+                        td.appendChild(badge);
                     } else {
-                        results += `<span class="status status-error">��� ${response.status}</span> ${url.substring(0, 60)}...<br>`;
-                        log(`❌ 失敗 (${response.status}): ${url}`, 'error');
-                    }
-                } catch (error) {
-                    results += `<span class="status status-error">❌ CORS</span> ${url.substring(0, 60)}...<br>`;
-                    log(`❌ CORS 錯誤: ${url}`, 'error');
-                }
-            }
-            
-            showResult(resultId, results, 'info');
-        }
-        
-        // Test custom URL
-        async function testCustomURL() {
-            const url = document.getElementById('customUrl').value.trim();
-            const resultId = 'result-custom';
-            
-            if (!url) {
-                showResult(resultId, '請輸入 URL', 'error');
-                return;
-            }
-            
-            log(`測試自訂 URL: ${url}`);
-            showResult(resultId, '正在獲取...', 'info');
-            
-            try {
-                const response = await fetch(url);
-                log(`回應狀態: ${response.status}`, response.ok ? 'success' : 'error');
-                
-                if (response.ok) {
-                    const text = await response.text();
-                    log(`成功! 資料長度: ${text.length}`, 'success');
-                    showResult(resultId, `<strong>✅ 成功!</strong><br>資料長度: ${text.length} 字元<div class="xml-preview">${escapeHtml(text.substring(0, 3000))}${text.length > 3000 ? '...(截斷)' : ''}</div>`, 'success');
-                    parseAndDisplayData(text, 'custom');
-                } else {
-                    const errorText = await response.text();
-                    showResult(resultId, `<strong>❌ 失敗</strong><br>狀態: ${response.status}<br>錯誤: ${escapeHtml(errorText.substring(0, 500))}`, 'error');
-                }
-            } catch (error) {
-                log(`錯誤: ${error.message}`, 'error');
-                showResult(resultId, `<strong>❌ 錯誤</strong><br>${error.message}`, 'error');
-            }
-        }
-        
-        async function testCustomWithProxy() {
-            const url = document.getElementById('customUrl').value.trim();
-            const resultId = 'result-custom';
-            
-            if (!url) {
-                showResult(resultId, '請輸入 URL', 'error');
-                return;
-            }
-            
-            showResult(resultId, '正在嘗試 Proxy...', 'info');
-            
-            for (const proxy of CORS_PROXIES) {
-                const proxyUrl = proxy.url + encodeURIComponent(url);
-                log(`嘗試 ${proxy.name}`);
-                
-                try {
-                    const response = await fetch(proxyUrl);
-                    
-                    if (response.ok) {
-                        const text = await response.text();
-                        log(`${proxy.name} 成功!`, 'success');
-                        showResult(resultId, `<strong>✅ 成功 (${proxy.name})</strong><br>資料長度: ${text.length} 字元<div class="xml-preview">${escapeHtml(text.substring(0, 3000))}${text.length > 3000 ? '...(截斷)' : ''}</div>`, 'success');
-                        parseAndDisplayData(text, 'custom');
-                        return;
-                    }
-                } catch (error) {
-                    log(`${proxy.name} 失敗: ${error.message}`, 'error');
-                }
-            }
-            
-            showResult(resultId, '<strong>❌ 所有 Proxy 都失敗了</strong>', 'error');
-        }
-        
-        // Parse and display XML data
-        function parseAndDisplayData(xmlText, type) {
-            const container = document.getElementById('parsed-data');
-            
-            try {
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-                
-                // Check for parse errors
-                const parseError = xmlDoc.querySelector('parsererror');
-                if (parseError) {
-                    container.innerHTML = `<p style="color: #c53030;">XML 解析錯誤: ${escapeHtml(parseError.textContent)}</p>`;
-                    log('XML 解析錯誤', 'error');
-                    return;
-                }
-                
-                // Log root element info
-                const root = xmlDoc.documentElement;
-                log(`根元素: <${root.tagName}>, 子元素數量: ${root.children.length}`, 'info');
-                
-                // Try to find records
-                const allElements = xmlDoc.getElementsByTagName('*');
-                log(`總共 ${allElements.length} 個 XML 元素`, 'info');
-                
-                // List all unique tag names
-                const tagNames = new Set();
-                for (let i = 0; i < allElements.length; i++) {
-                    tagNames.add(allElements[i].tagName);
-                }
-                log(`標籤名稱: ${Array.from(tagNames).join(', ')}`, 'info');
-                
-                // Try to extract data
-                let records = [];
-                
-                // Try common record containers
-                const recordSelectors = ['Record', 'record', 'RECORD', 'row', 'Row', 'ROW', 'item', 'Item', 'ITEM', 'vessel', 'Vessel', 'VESSEL'];
-                
-                for (const selector of recordSelectors) {
-                    const elements = xmlDoc.getElementsByTagName(selector);
-                    if (elements.length > 0) {
-                        log(`找到 ${elements.length} 個 <${selector}> 記錄`, 'success');
+                        td.textContent = value;
                         
-                        for (let i = 0; i < Math.min(elements.length, 50); i++) {
-                            const el = elements[i];
-                            const record = {};
-                            
-                            // Extract all child element values
-                            for (let j = 0; j < el.children.length; j++) {
-                                const child = el.children[j];
-                                record[child.tagName] = child.textContent.trim();
-                            }
-                            
-                            records.push(record);
-                        }
-                        break;
-                    }
-                }
-                
-                // If no records found, try root's direct children
-                if (records.length === 0 && root.children.length > 0) {
-                    log(`嘗試解析根元素的子元素`, 'info');
-                    
-                    for (let i = 0; i < Math.min(root.children.length, 50); i++) {
-                        const el = root.children[i];
-                        const record = {};
-                        
-                        for (let j = 0; j < el.children.length; j++) {
-                            const child = el.children[j];
-                            record[child.tagName] = child.textContent.trim();
-                        }
-                        
-                        if (Object.keys(record).length > 0) {
-                            records.push(record);
+                        if (searchTerm && value.toString().toUpperCase().includes(searchTerm.toUpperCase())) {
+                            td.classList.add('highlight');
                         }
                     }
-                }
+                    
+                    row.appendChild(td);
+                });
                 
-                if (records.length > 0) {
-                    // Create table
-                    const headers = Object.keys(records[0]);
-                    let tableHtml = '<table class="data-table"><thead><tr>';
-                    headers.forEach(h => {
-                        tableHtml += `<th>${escapeHtml(h)}</th>`;
-                    });
-                    tableHtml += '</tr></thead><tbody>';
-                    
-                    records.forEach(record => {
-                        tableHtml += '<tr>';
-                        headers.forEach(h => {
-                            tableHtml += `<td>${escapeHtml(record[h] || '-')}</td>`;
-                        });
-                        tableHtml += '</tr>';
-                    });
-                    
-                    tableHtml += '</tbody></table>';
-                    
-                    container.innerHTML = `<p style="color: #276749; margin-bottom: 12px;"><strong>✅ 成功解析 ${records.length} 筆記錄</strong></p>${tableHtml}`;
-                    log(`成功解析 ${records.length} 筆記錄`, 'success');
-                } else {
-                    container.innerHTML = `<p style="color: #975a16;">無法找到記錄。XML 結構:</p><div class="xml-preview">${escapeHtml(xmlText.substring(0, 2000))}</div>`;
-                    log('無法找到���錄', 'error');
-                }
-                
-            } catch (error) {
-                container.innerHTML = `<p style="color: #c53030;">解析錯誤: ${escapeHtml(error.message)}</p>`;
-                log(`解析錯誤: ${error.message}`, 'error');
-            }
+                tableBody.appendChild(row);
+            });
+            
+            tableWrapper.classList.add('show');
         }
         
-        // Utility function
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
+        // Export to CSV
+        function exportToCSV() {
+            if (currentData.length === 0) return;
+            
+            const columns = ['vesselName', 'type', 'time', 'location', 'shipType', 'callSign', 'agentName', 'recordDate'];
+            const headers = ['船隻名稱', '類型', '時間', '位置', '船舶類型', '呼號', '代理', '記錄日期'];
+            
+            let csv = '\uFEFF' + headers.join(',') + '\n';
+            
+            currentData.forEach(row => {
+                const values = columns.map(col => {
+                    const value = row[col] || '';
+                    return `"${value.toString().replace(/"/g, '""')}"`;
+                });
+                csv += values.join(',') + '\n';
+            });
+            
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `船隻資料-${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+        
+        // Clear functions
+        function clearSearch() {
+            document.getElementById('vesselNameRealtime').value = '';
+            document.getElementById('vesselNameHistorical').value = '';
+            document.getElementById('dataTypeRealtime').value = 'both';
+            document.getElementById('dataTypeBydate').value = 'both';
+            
+            const today = new Date().toISOString().split('T')[0];
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            
+            document.getElementById('startDateHistorical').value = yesterday;
+            document.getElementById('endDateHistorical').value = today;
+            document.getElementById('dateBydate').value = today;
+            
+            clearResults();
+        }
+        
+        function clearResults() {
+            currentData = [];
+            document.getElementById('tableWrapper').classList.remove('show');
+            document.getElementById('stats').style.display = 'none';
+            document.getElementById('exportBtn').disabled = true;
+            hideNoResults();
+            clearMessages();
+        }
+        
+        // UI helpers
+        function showLoading(text) {
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('loadingText').textContent = text || '正在獲取資料...';
+            document.getElementById('tableWrapper').classList.remove('show');
+            document.getElementById('stats').style.display = 'none';
+            hideNoResults();
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').classList.remove('show');
+        }
+        
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.add('show');
+        }
+        
+        function showSuccess(message) {
+            const el = document.getElementById('successMessage');
+            el.textContent = message;
+            el.classList.add('show');
+        }
+        
+        function clearMessages() {
+            document.querySelectorAll('.message').forEach(el => el.classList.remove('show'));
+        }
+        
+        function showNoResults() {
+            document.getElementById('noResults').classList.add('show');
+        }
+        
+        function hideNoResults() {
+            document.getElementById('noResults').classList.remove('show');
         }
     </script>
 </body>
