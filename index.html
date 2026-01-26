@@ -502,14 +502,11 @@
                         <button class="tab-btn" data-mode="historical" onclick="switchMode('historical')">
                             歷史資料查詢
                         </button>
-                        <button class="tab-btn" data-mode="bydate" onclick="switchMode('bydate')">
-                            按日期列出所有船隻
-                        </button>
                     </div>
                     
                     <!-- Mode 1: Real-time (Last 36 hours) -->
                     <div class="search-form active" id="form-realtime">
-                        <p class="form-hint">查詢過去36小時內抵港或離港的船隻資料。輸入船隻名稱可顯示其抵港/離港時間。</p>
+                        <p class="form-hint">查詢過去36小時內抵港或離港的船隻資料。</p>
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="vesselNameRealtime">船隻名稱（可選）</label>
@@ -526,13 +523,13 @@
                         </div>
                     </div>
                     
-                    <!-- Mode 2: Historical by Vessel Name -->
+                    <!-- Mode 2: Historical -->
                     <div class="search-form" id="form-historical">
-                        <p class="form-hint">輸入船隻名稱及時間範圍（最多5天），查詢該船隻的歷史進出港記錄。</p>
+                        <p class="form-hint">查詢歷史進出港記錄（日期範圍最多5天）。</p>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="vesselNameHistorical">船隻名稱</label>
-                                <input type="text" id="vesselNameHistorical" placeholder="輸入船隻名稱..." required>
+                                <label for="vesselNameHistorical">船隻名稱（可選）</label>
+                                <input type="text" id="vesselNameHistorical" placeholder="輸���船隻名稱...">
                             </div>
                             <div class="form-group">
                                 <label for="startDateHistorical">開始日期</label>
@@ -542,24 +539,9 @@
                                 <label for="endDateHistorical">結束日期</label>
                                 <input type="date" id="endDateHistorical">
                             </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Mode 3: List all vessels by date -->
-                    <div class="search-form" id="form-bydate">
-                        <p class="form-hint">選擇日期範圍（最多5天）</p>
-                        <div class="form-row">
                             <div class="form-group">
-                                <label for="startDateBydate">開始日期</label>
-                                <input type="date" id="startDateBydate" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="endDateBydate">結束日期</label>
-                                <input type="date" id="endDateBydate" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="dataTypeBydate">資料類型</label>
-                                <select id="dataTypeBydate">
+                                <label for="dataTypeHistorical">資料類型</label>
+                                <select id="dataTypeHistorical">
                                     <option value="both">抵港及離港</option>
                                     <option value="arrival">僅抵港</option>
                                     <option value="departure">僅離港</option>
@@ -613,7 +595,7 @@
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/92cf7f6f-be58-4072-84ff-3b8c612bf204" target="_blank">在過去三十六小時抵港的船隻</a><br>
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/7cafe2bc-066f-4665-b527-d4b792f96e4a" target="_blank">在過去三十六小時離港的船隻</a>
             </div>
-            <div class="footer-version">Version: V5.3</div>
+            <div class="footer-version">Version: V5.4</div>
         </div>
     </footer>
 
@@ -640,11 +622,9 @@
             
             document.getElementById('startDateHistorical').value = yesterday;
             document.getElementById('endDateHistorical').value = today;
-            document.getElementById('startDateBydate').value = yesterday;
-            document.getElementById('endDateBydate').value = today;
         });
         
-        // Logging - Improved formatting
+        // Logging
         function log(message, type = 'info') {
             const logPanel = document.getElementById('logPanel');
             const time = new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -730,9 +710,6 @@
                     case 'historical':
                         await searchHistorical();
                         break;
-                    case 'bydate':
-                        await searchByDate();
-                        break;
                 }
             } catch (error) {
                 console.error('Search error:', error);
@@ -779,7 +756,6 @@
             }
             
             if (vesselName) {
-                const beforeFilter = allData.length;
                 allData = allData.filter(item => 
                     item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
                 );
@@ -795,11 +771,7 @@
             const vesselName = document.getElementById('vesselNameHistorical').value.trim().toUpperCase();
             const startDate = document.getElementById('startDateHistorical').value;
             const endDate = document.getElementById('endDateHistorical').value;
-            
-            if (!vesselName) {
-                showError('請輸入船隻名稱');
-                return;
-            }
+            const dataType = document.getElementById('dataTypeHistorical').value;
             
             // Validate date range
             const validation = validateDateRange(startDate, endDate);
@@ -809,45 +781,34 @@
             }
             
             showLoading('正在獲取歷史資料...');
-            logHeader(`歷史資料查詢: ${vesselName}`);
-            log(`日期範圍: ${startDate} 至 ${endDate} (${validation.days} 天)`, 'info');
             
-            const allData = await fetchHistoricalDataRange(startDate, endDate, 'both');
-            
-            const filtered = allData.filter(item => 
-                item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
-            );
-            
-            log(`篩選 "${vesselName}": ${filtered.length} 筆符合`, 'info');
-            logSummary(`完成: 找到 ${filtered.length} 筆 "${vesselName}" 的記錄`);
-            
-            displayResults(filtered, vesselName);
-        }
-        
-        // Mode 3: List by date range (max 5 days)
-        async function searchByDate() {
-            const startDate = document.getElementById('startDateBydate').value;
-            const endDate = document.getElementById('endDateBydate').value;
-            const dataType = document.getElementById('dataTypeBydate').value;
-            
-            // Validate date range
-            const validation = validateDateRange(startDate, endDate);
-            if (!validation.valid) {
-                showError(validation.error);
-                return;
+            if (vesselName) {
+                logHeader(`歷史資料查詢: ${vesselName}`);
+            } else {
+                logHeader('歷史資料查詢');
             }
-            
-            showLoading('正在獲取資料...');
-            logHeader(`按日期查詢: ${startDate} 至 ${endDate}`);
-            log(`共 ${validation.days} 天`, 'info');
+            log(`日期範圍: ${startDate} 至 ${endDate} (${validation.days} 天)`, 'info');
             
             const allData = await fetchHistoricalDataRange(startDate, endDate, dataType);
             
-            const arrivals = allData.filter(r => r.type === '抵港').length;
-            const departures = allData.filter(r => r.type === '離港').length;
-            logSummary(`完成: 共 ${allData.length} 筆記錄 (抵港 ${arrivals}, 離港 ${departures})`);
+            let filteredData = allData;
+            if (vesselName) {
+                filteredData = allData.filter(item => 
+                    item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
+                );
+                log(`篩選 "${vesselName}": ${filteredData.length} 筆符合`, 'info');
+            }
             
-            displayResults(allData, '');
+            const arrivals = filteredData.filter(r => r.type === '抵港').length;
+            const departures = filteredData.filter(r => r.type === '離港').length;
+            
+            if (vesselName) {
+                logSummary(`完成: 找到 ${filteredData.length} 筆 "${vesselName}" 的記錄`);
+            } else {
+                logSummary(`完成: 共 ${filteredData.length} 筆記錄 (抵港 ${arrivals}, 離港 ${departures})`);
+            }
+            
+            displayResults(filteredData, vesselName);
         }
         
         // Get appropriate time slots for a date
@@ -856,11 +817,9 @@
             const isToday = dateStr === today;
             
             if (!isToday) {
-                // For past days, fetch at multiple times to cover full day
                 return ['0000', '0800', '1600', '2359'];
             }
             
-            // For today, only fetch times that have passed
             const currentHour = new Date().getHours();
             const slots = [];
             
@@ -868,7 +827,6 @@
             if (currentHour >= 8) slots.push('0800');
             if (currentHour >= 16) slots.push('1600');
             
-            // If no slots available yet, use current time
             if (slots.length === 0) {
                 const hourStr = currentHour.toString().padStart(2, '0') + '00';
                 slots.push(hourStr);
@@ -916,7 +874,7 @@
                                 }
                             });
                         } catch (e) {
-                            // Silent fail for individual time slots
+                            // Silent fail
                         }
                     }
                     
@@ -931,7 +889,7 @@
                                 }
                             });
                         } catch (e) {
-                            // Silent fail for individual time slots
+                            // Silent fail
                         }
                     }
                 }
@@ -939,7 +897,6 @@
                 totalArrivals += dayArrivals;
                 totalDepartures += dayDepartures;
                 
-                // Log day summary
                 const parts = [];
                 if (dataType === 'both' || dataType === 'arrival') parts.push(`抵港 ${dayArrivals}`);
                 if (dataType === 'both' || dataType === 'departure') parts.push(`離港 ${dayDepartures}`);
@@ -957,15 +914,13 @@
             return await fetchXMLDataSimple(historicalUrl, type, true);
         }
         
-        // Fetch XML data - simplified logging
+        // Fetch XML data
         async function fetchXMLDataSimple(url, type, silent = false) {
-            // Try direct fetch first
             try {
                 const response = await fetch(url);
                 if (response.ok) {
                     const xmlText = await response.text();
-                    // Check if response is valid XML (not an error message)
-                    if (xmlText.length > 100 && xmlText.includes('<?xml') || xmlText.includes('<RP0')) {
+                    if (xmlText.length > 100 && (xmlText.includes('<?xml') || xmlText.includes('<RP0'))) {
                         return parseVesselXML(xmlText, type);
                     }
                 }
@@ -973,7 +928,6 @@
                 // Silent fail, try proxy
             }
             
-            // Try CORS proxies
             for (let i = 0; i < CONFIG.corsProxies.length; i++) {
                 const proxy = CONFIG.corsProxies[i];
                 try {
@@ -981,7 +935,6 @@
                     const response = await fetch(proxyUrl);
                     if (response.ok) {
                         const xmlText = await response.text();
-                        // Check if response is valid XML
                         if (xmlText.length > 100 && (xmlText.includes('<?xml') || xmlText.includes('<RP0') || xmlText.includes('<G_SQL'))) {
                             return parseVesselXML(xmlText, type);
                         }
@@ -1005,7 +958,6 @@
                 return data;
             }
             
-            // Try G_SQL1 first, then other selectors
             const recordSelectors = ['G_SQL1', 'Record', 'record', 'RECORD', 'row', 'Row', 'ROW'];
             let records = [];
             
@@ -1182,15 +1134,13 @@
             document.getElementById('vesselNameRealtime').value = '';
             document.getElementById('vesselNameHistorical').value = '';
             document.getElementById('dataTypeRealtime').value = 'both';
-            document.getElementById('dataTypeBydate').value = 'both';
+            document.getElementById('dataTypeHistorical').value = 'both';
             
             const today = new Date().toISOString().split('T')[0];
             const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
             
             document.getElementById('startDateHistorical').value = yesterday;
             document.getElementById('endDateHistorical').value = today;
-            document.getElementById('startDateBydate').value = yesterday;
-            document.getElementById('endDateBydate').value = today;
             
             clearResults();
         }
