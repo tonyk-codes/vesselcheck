@@ -187,15 +187,6 @@
             background: #4a5568;
         }
         
-        .btn-success {
-            background: #38a169;
-            color: white;
-        }
-        
-        .btn-success:hover {
-            background: #2f855a;
-        }
-        
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -282,6 +273,45 @@
             background: #c6f6d5;
             color: #276749;
             border-left: 3px solid #38a169;
+        }
+        
+        /* Log Panel */
+        .log-panel {
+            background: #1a202c;
+            color: #a0aec0;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            display: none;
+        }
+        
+        .log-panel.show {
+            display: block;
+        }
+        
+        .log-panel .log-entry {
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        
+        .log-panel .log-time {
+            color: #718096;
+        }
+        
+        .log-panel .log-success {
+            color: #68d391;
+        }
+        
+        .log-panel .log-error {
+            color: #fc8181;
+        }
+        
+        .log-panel .log-info {
+            color: #63b3ed;
         }
         
         /* Table */
@@ -498,40 +528,15 @@
                     
                     <!-- Mode 3: List all vessels by date -->
                     <div class="search-form" id="form-bydate">
-                        <p class="form-hint">選擇日期及時間，列出該時段所有進出港船隻。</p>
+                        <p class="form-hint">選擇日期範圍（最多5天），列出該期間所有進出港船隻。</p>
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="dateBydate">日期 *</label>
-                                <input type="date" id="dateBydate" required>
+                                <label for="startDateBydate">開始日期 *</label>
+                                <input type="date" id="startDateBydate" required>
                             </div>
                             <div class="form-group">
-                                <label for="timeBydate">時間</label>
-                                <select id="timeBydate">
-                                    <option value="0000">00:00</option>
-                                    <option value="0100">01:00</option>
-                                    <option value="0200">02:00</option>
-                                    <option value="0300">03:00</option>
-                                    <option value="0400">04:00</option>
-                                    <option value="0500">05:00</option>
-                                    <option value="0600">06:00</option>
-                                    <option value="0700">07:00</option>
-                                    <option value="0800">08:00</option>
-                                    <option value="0900">09:00</option>
-                                    <option value="1000">10:00</option>
-                                    <option value="1100">11:00</option>
-                                    <option value="1200">12:00</option>
-                                    <option value="1300">13:00</option>
-                                    <option value="1400">14:00</option>
-                                    <option value="1500">15:00</option>
-                                    <option value="1600">16:00</option>
-                                    <option value="1700">17:00</option>
-                                    <option value="1800">18:00</option>
-                                    <option value="1900">19:00</option>
-                                    <option value="2000">20:00</option>
-                                    <option value="2100">21:00</option>
-                                    <option value="2200">22:00</option>
-                                    <option value="2300">23:00</option>
-                                </select>
+                                <label for="endDateBydate">結束日期 *</label>
+                                <input type="date" id="endDateBydate" required>
                             </div>
                             <div class="form-group">
                                 <label for="dataTypeBydate">資料類型</label>
@@ -547,7 +552,6 @@
                     <div class="btn-group">
                         <button class="btn btn-primary" onclick="performSearch()">搜尋</button>
                         <button class="btn btn-secondary" onclick="clearSearch()">清除</button>
-                        <button class="btn btn-success" id="exportBtn" onclick="exportToCSV()" disabled>匯出 CSV</button>
                     </div>
                 </div>
             </div>
@@ -558,6 +562,8 @@
                 <div class="card-body">
                     <div class="message error" id="errorMessage"></div>
                     <div class="message success" id="successMessage"></div>
+                    
+                    <div class="log-panel" id="logPanel"></div>
                     
                     <div class="loading" id="loading">
                         <div class="spinner"></div>
@@ -588,15 +594,17 @@
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/92cf7f6f-be58-4072-84ff-3b8c612bf204" target="_blank">在過去三十六小時抵港的船隻</a><br>
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/7cafe2bc-066f-4665-b527-d4b792f96e4a" target="_blank">在過去三十六小時離港的船隻</a>
             </div>
-            <div class="footer-version">Version: V5</div>
+            <div class="footer-version">Version: V5.1</div>
         </div>
     </footer>
 
     <script>
-        // Configuration
+        // Configuration - Fixed URLs based on actual XML structure
         const CONFIG = {
+            // RP05005i.XML = Arrivals (在過去三十六小時抵港的船隻)
+            // RP05505i.XML = Departures (在過去三十六小時離港的船隻)
             arrivalUrl: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML',
-            departureUrl: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05006i.XML',
+            departureUrl: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05505i.XML',
             historicalApiBase: 'https://api.data.gov.hk/v1/historical-archive/get-file',
             corsProxies: [
                 'https://api.allorigins.win/raw?url=',
@@ -614,8 +622,28 @@
             
             document.getElementById('startDateHistorical').value = yesterday;
             document.getElementById('endDateHistorical').value = today;
-            document.getElementById('dateBydate').value = today;
+            document.getElementById('startDateBydate').value = yesterday;
+            document.getElementById('endDateBydate').value = today;
         });
+        
+        // Logging
+        function log(message, type = 'info') {
+            const logPanel = document.getElementById('logPanel');
+            const time = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+            logPanel.appendChild(entry);
+            logPanel.scrollTop = logPanel.scrollHeight;
+            logPanel.classList.add('show');
+            console.log(`[${type}] ${message}`);
+        }
+        
+        function clearLog() {
+            const logPanel = document.getElementById('logPanel');
+            logPanel.innerHTML = '';
+            logPanel.classList.remove('show');
+        }
         
         // Switch search mode
         function switchMode(mode) {
@@ -637,6 +665,7 @@
         async function performSearch() {
             clearMessages();
             clearResults();
+            clearLog();
             
             try {
                 switch (currentMode) {
@@ -652,6 +681,7 @@
                 }
             } catch (error) {
                 console.error('Search error:', error);
+                log(`搜尋錯誤: ${error.message}`, 'error');
                 showError(`搜尋時發生錯誤：${error.message}`);
                 hideLoading();
             }
@@ -663,31 +693,38 @@
             const dataType = document.getElementById('dataTypeRealtime').value;
             
             showLoading('正在獲取即時船隻資料...');
+            log('開始即時查詢...');
             
             let allData = [];
             
             if (dataType === 'both' || dataType === 'arrival') {
+                log(`正在獲取抵港資料: ${CONFIG.arrivalUrl}`);
                 try {
                     const arrivalData = await fetchXMLData(CONFIG.arrivalUrl, 'arrival');
+                    log(`抵港資料: 成功獲取 ${arrivalData.length} 筆記錄`, 'success');
                     allData = allData.concat(arrivalData);
                 } catch (e) {
-                    console.warn('Failed to fetch arrival data:', e);
+                    log(`抵港資料獲取失敗: ${e.message}`, 'error');
                 }
             }
             
             if (dataType === 'both' || dataType === 'departure') {
+                log(`正在獲取離港資料: ${CONFIG.departureUrl}`);
                 try {
                     const departureData = await fetchXMLData(CONFIG.departureUrl, 'departure');
+                    log(`離港資料: 成功獲取 ${departureData.length} 筆記錄`, 'success');
                     allData = allData.concat(departureData);
                 } catch (e) {
-                    console.warn('Failed to fetch departure data:', e);
+                    log(`離港資料獲取失敗: ${e.message}`, 'error');
                 }
             }
             
             if (vesselName) {
+                const beforeFilter = allData.length;
                 allData = allData.filter(item => 
                     item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
                 );
+                log(`篩選船隻名稱 "${vesselName}": ${beforeFilter} -> ${allData.length} 筆`, 'info');
             }
             
             displayResults(allData, vesselName);
@@ -715,6 +752,9 @@
             }
             
             showLoading('正在獲取歷史資料...');
+            log('開始歷史資料查詢...');
+            log(`船隻名稱: ${vesselName}`);
+            log(`日期範圍: ${startDate} 至 ${endDate}`);
             
             const allData = await fetchHistoricalDataRange(startDate, endDate);
             
@@ -722,50 +762,45 @@
                 item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
             );
             
+            log(`篩選船隻名稱 "${vesselName}": ${allData.length} -> ${filtered.length} 筆`, 'info');
+            
             displayResults(filtered, vesselName);
         }
         
-        // Mode 3: List by date
+        // Mode 3: List by date range (max 5 days)
         async function searchByDate() {
-            const date = document.getElementById('dateBydate').value;
-            const time = document.getElementById('timeBydate').value;
+            const startDate = document.getElementById('startDateBydate').value;
+            const endDate = document.getElementById('endDateBydate').value;
             const dataType = document.getElementById('dataTypeBydate').value;
             
-            if (!date) {
-                showError('請選擇日期');
+            if (!startDate || !endDate) {
+                showError('請選擇開始和結束日期');
+                return;
+            }
+            
+            if (new Date(startDate) > new Date(endDate)) {
+                showError('開始日期必須早於結束日期');
+                return;
+            }
+            
+            // Check 5 day limit
+            const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+            if (daysDiff > 5) {
+                showError('日期範圍不可超過5天');
                 return;
             }
             
             showLoading('正在獲取資料...');
+            log('開始按日期查詢...');
+            log(`日期範圍: ${startDate} 至 ${endDate} (${daysDiff} 天)`);
             
-            const dateStr = date.replace(/-/g, '');
-            const timeParam = `${dateStr}-${time}`;
-            
-            let allData = [];
-            
-            if (dataType === 'both' || dataType === 'arrival') {
-                try {
-                    const arrivalData = await fetchHistoricalData(CONFIG.arrivalUrl, timeParam, 'arrival');
-                    allData = allData.concat(arrivalData);
-                } catch (e) {
-                    console.warn('Failed to fetch historical arrival data:', e);
-                }
-            }
-            
-            if (dataType === 'both' || dataType === 'departure') {
-                try {
-                    const departureData = await fetchHistoricalData(CONFIG.departureUrl, timeParam, 'departure');
-                    allData = allData.concat(departureData);
-                } catch (e) {
-                    console.warn('Failed to fetch historical departure data:', e);
-                }
-            }
+            const allData = await fetchHistoricalDataRange(startDate, endDate, dataType);
             
             displayResults(allData, '');
         }
         
-        // Fetch historical data range
-        async function fetchHistoricalDataRange(startDate, endDate) {
+        // Fetch historical data range - fetches full day data (00:00 to 23:59)
+        async function fetchHistoricalDataRange(startDate, endDate, dataType = 'both') {
             const start = new Date(startDate);
             const end = new Date(endDate);
             let allData = [];
@@ -777,29 +812,54 @@
             while (current <= end) {
                 dayCount++;
                 const dateStr = current.toISOString().split('T')[0].replace(/-/g, '');
-                const timeParam = `${dateStr}-1200`;
+                const displayDate = current.toISOString().split('T')[0];
                 
-                showLoading(`正在獲取 ${current.toISOString().split('T')[0]} 的資料 (${dayCount}/${totalDays})...`);
+                // Fetch data at multiple times to cover full day (00:00, 12:00, 23:00)
+                const timesToFetch = ['0000', '1200', '2300'];
                 
-                try {
-                    const arrivalData = await fetchHistoricalData(CONFIG.arrivalUrl, timeParam, 'arrival');
-                    arrivalData.forEach(item => item.recordDate = current.toISOString().split('T')[0]);
-                    allData = allData.concat(arrivalData);
-                } catch (e) {
-                    console.warn(`Failed to fetch arrival data for ${dateStr}:`, e);
-                }
+                showLoading(`正在獲取 ${displayDate} 的資料 (${dayCount}/${totalDays})...`);
+                log(`處理日期: ${displayDate} (${dayCount}/${totalDays})`);
                 
-                try {
-                    const departureData = await fetchHistoricalData(CONFIG.departureUrl, timeParam, 'departure');
-                    departureData.forEach(item => item.recordDate = current.toISOString().split('T')[0]);
-                    allData = allData.concat(departureData);
-                } catch (e) {
-                    console.warn(`Failed to fetch departure data for ${dateStr}:`, e);
+                for (const time of timesToFetch) {
+                    const timeParam = `${dateStr}-${time}`;
+                    
+                    if (dataType === 'both' || dataType === 'arrival') {
+                        try {
+                            const arrivalData = await fetchHistoricalData(CONFIG.arrivalUrl, timeParam, 'arrival');
+                            arrivalData.forEach(item => item.recordDate = displayDate);
+                            // Deduplicate by vessel name + time
+                            arrivalData.forEach(item => {
+                                if (!allData.some(d => d.vesselName === item.vesselName && d.time === item.time && d.type === item.type)) {
+                                    allData.push(item);
+                                }
+                            });
+                            log(`  ${time} 抵港: ${arrivalData.length} 筆`, 'success');
+                        } catch (e) {
+                            log(`  ${time} 抵港資料獲取失敗`, 'error');
+                        }
+                    }
+                    
+                    if (dataType === 'both' || dataType === 'departure') {
+                        try {
+                            const departureData = await fetchHistoricalData(CONFIG.departureUrl, timeParam, 'departure');
+                            departureData.forEach(item => item.recordDate = displayDate);
+                            // Deduplicate by vessel name + time
+                            departureData.forEach(item => {
+                                if (!allData.some(d => d.vesselName === item.vesselName && d.time === item.time && d.type === item.type)) {
+                                    allData.push(item);
+                                }
+                            });
+                            log(`  ${time} 離港: ${departureData.length} 筆`, 'success');
+                        } catch (e) {
+                            log(`  ${time} 離港資料獲取失敗`, 'error');
+                        }
+                    }
                 }
                 
                 current.setDate(current.getDate() + 1);
             }
             
+            log(`總共獲取 ${allData.length} 筆不重複記錄`, 'success');
             return allData;
         }
         
@@ -813,33 +873,42 @@
         async function fetchXMLData(url, type) {
             // Try direct fetch first
             try {
+                log(`嘗試直接連接...`, 'info');
                 const response = await fetch(url);
                 if (response.ok) {
                     const xmlText = await response.text();
+                    log(`直接連接成功，資料大小: ${xmlText.length} 字元`, 'success');
                     return parseVesselXML(xmlText, type);
+                } else {
+                    log(`直接連接失敗: HTTP ${response.status}`, 'error');
                 }
             } catch (e) {
-                console.log('Direct fetch failed, trying proxies...');
+                log(`直接連接失敗: ${e.message}`, 'error');
             }
             
             // Try CORS proxies
-            for (const proxy of CONFIG.corsProxies) {
+            for (let i = 0; i < CONFIG.corsProxies.length; i++) {
+                const proxy = CONFIG.corsProxies[i];
                 try {
+                    log(`嘗試 CORS Proxy ${i + 1}...`, 'info');
                     const proxyUrl = proxy + encodeURIComponent(url);
                     const response = await fetch(proxyUrl);
                     if (response.ok) {
                         const xmlText = await response.text();
+                        log(`Proxy ${i + 1} 成功，資料大小: ${xmlText.length} 字元`, 'success');
                         return parseVesselXML(xmlText, type);
+                    } else {
+                        log(`Proxy ${i + 1} 失敗: HTTP ${response.status}`, 'error');
                     }
                 } catch (e) {
-                    console.log(`Proxy ${proxy} failed`);
+                    log(`Proxy ${i + 1} 失敗: ${e.message}`, 'error');
                 }
             }
             
             throw new Error('無法獲取資料');
         }
         
-        // Parse XML data
+        // Parse XML data - Updated to handle G_SQL1 records
         function parseVesselXML(xmlText, type) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
@@ -847,21 +916,27 @@
             
             const parseError = xmlDoc.querySelector('parsererror');
             if (parseError) {
+                log('XML 解析錯誤', 'error');
                 return data;
             }
             
-            const recordSelectors = ['Record', 'record', 'RECORD', 'row', 'Row', 'ROW'];
+            // Try G_SQL1 first (as shown in the sample XML), then other selectors
+            const recordSelectors = ['G_SQL1', 'Record', 'record', 'RECORD', 'row', 'Row', 'ROW'];
             let records = [];
             
             for (const selector of recordSelectors) {
                 records = xmlDoc.getElementsByTagName(selector);
-                if (records.length > 0) break;
+                if (records.length > 0) {
+                    log(`找到 ${records.length} 個 <${selector}> 記錄`, 'info');
+                    break;
+                }
             }
             
             if (records.length === 0) {
                 const root = xmlDoc.documentElement;
                 if (root && root.children.length > 0) {
                     records = root.children;
+                    log(`使用根元素子節點: ${records.length} 個`, 'info');
                 }
             }
             
@@ -875,7 +950,7 @@
             return data;
         }
         
-        // Parse single record
+        // Parse single record - Updated field mappings
         function parseVesselRecord(element, type) {
             const getVal = (names) => {
                 for (const name of names) {
@@ -893,6 +968,7 @@
             
             const vesselName = getVal(['VESSEL_NAME', 'Vessel_Name', 'vessel_name', 'VesselName']);
             
+            // Different time fields for arrival vs departure
             let time = '';
             if (type === 'arrival') {
                 time = getVal(['ARRIVAL_TIME', 'Arrival_Time', 'arrival_time', 'ArrivalTime']);
@@ -900,9 +976,14 @@
                 time = getVal(['ATD_TIME', 'Atd_Time', 'atd_time', 'AtdTime', 'DEPARTURE_TIME']);
             }
             
-            const location = type === 'arrival' 
-                ? getVal(['ANCHORAGE', 'Anchorage', 'anchorage', 'LOCATION'])
-                : getVal(['LAST_BERTH', 'Last_Berth', 'last_berth', 'LastBerth']);
+            // Different location fields for arrival vs departure
+            // Arrival uses CURRENT_LOCATION, Departure uses LAST_BERTH
+            let location = '';
+            if (type === 'arrival') {
+                location = getVal(['CURRENT_LOCATION', 'Current_Location', 'current_location', 'ANCHORAGE', 'Anchorage']);
+            } else {
+                location = getVal(['LAST_BERTH', 'Last_Berth', 'last_berth', 'LastBerth']);
+            }
             
             return {
                 vesselName: vesselName,
@@ -922,18 +1003,17 @@
             currentData = data;
             
             if (data.length === 0) {
+                log('沒有找到符合條件的記錄', 'info');
                 showNoResults();
-                document.getElementById('exportBtn').disabled = true;
                 return;
             }
             
             hideNoResults();
             showSuccess(`找到 ${data.length} 筆記錄`);
+            log(`顯示 ${data.length} 筆記錄`, 'success');
             
             displayStats(data);
             createTable(data, searchTerm);
-            
-            document.getElementById('exportBtn').disabled = false;
         }
         
         // Display stats
@@ -1021,32 +1101,6 @@
             tableWrapper.classList.add('show');
         }
         
-        // Export to CSV
-        function exportToCSV() {
-            if (currentData.length === 0) return;
-            
-            const columns = ['vesselName', 'type', 'time', 'location', 'shipType', 'callSign', 'agentName', 'recordDate'];
-            const headers = ['船隻名稱', '類型', '時間', '位置', '船舶類型', '呼號', '代理', '記錄日期'];
-            
-            let csv = '\uFEFF' + headers.join(',') + '\n';
-            
-            currentData.forEach(row => {
-                const values = columns.map(col => {
-                    const value = row[col] || '';
-                    return `"${value.toString().replace(/"/g, '""')}"`;
-                });
-                csv += values.join(',') + '\n';
-            });
-            
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `船隻資料-${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-            window.URL.revokeObjectURL(url);
-        }
-        
         // Clear functions
         function clearSearch() {
             document.getElementById('vesselNameRealtime').value = '';
@@ -1059,7 +1113,8 @@
             
             document.getElementById('startDateHistorical').value = yesterday;
             document.getElementById('endDateHistorical').value = today;
-            document.getElementById('dateBydate').value = today;
+            document.getElementById('startDateBydate').value = yesterday;
+            document.getElementById('endDateBydate').value = today;
             
             clearResults();
         }
@@ -1068,9 +1123,9 @@
             currentData = [];
             document.getElementById('tableWrapper').classList.remove('show');
             document.getElementById('stats').style.display = 'none';
-            document.getElementById('exportBtn').disabled = true;
             hideNoResults();
             clearMessages();
+            clearLog();
         }
         
         // UI helpers
