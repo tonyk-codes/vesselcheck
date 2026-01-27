@@ -595,7 +595,7 @@
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/92cf7f6f-be58-4072-84ff-3b8c612bf204" target="_blank">在過去三十六小時抵港的船隻</a><br>
                 <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/7cafe2bc-066f-4665-b527-d4b792f96e4a" target="_blank">在過去三十六小時離港的船隻</a>
             </div>
-            <div class="footer-version">Version: V5.4</div>
+            <div class="footer-version">20260127.1</div>
         </div>
     </footer>
 
@@ -867,7 +867,7 @@
                         try {
                             const arrivalData = await fetchHistoricalData(CONFIG.arrivalUrl, timeParam, 'arrival');
                             arrivalData.forEach(item => {
-                                item.recordDate = dateStr;
+                                item.time = dateStr;
                                 if (!allData.some(d => d.vesselName === item.vesselName && d.time === item.time && d.type === item.type)) {
                                     allData.push(item);
                                     dayArrivals++;
@@ -882,7 +882,7 @@
                         try {
                             const departureData = await fetchHistoricalData(CONFIG.departureUrl, timeParam, 'departure');
                             departureData.forEach(item => {
-                                item.recordDate = dateStr;
+                                item.time = dateStr;
                                 if (!allData.some(d => d.vesselName === item.vesselName && d.time === item.time && d.type === item.type)) {
                                     allData.push(item);
                                     dayDepartures++;
@@ -1087,11 +1087,7 @@
                 { key: 'callSign', label: '呼號' },
                 { key: 'agentName', label: '代理' }
             ];
-            
-            if (data.some(item => item.recordDate)) {
-                columns.splice(3, 0, { key: 'recordDate', label: '記錄日期' });
-            }
-            
+                    
             const headerRow = document.createElement('tr');
             columns.forEach(col => {
                 const th = document.createElement('th');
