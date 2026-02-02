@@ -1,1222 +1,1008 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>海事處船隻進出港資料查詢</title>
-    <style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>海事處船隻進出港資料查詢</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
-            background: #f7fafc;
-            color: #1a202c;
-            font-size: 14px;
-            line-height: 1.5;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            width: 100%;
-        }
-        
-        
-        header {
-            background: #1a365d;
-            color: white;
-            padding: 16px 0;
-        }
-        
-        header h1 {
-            font-size: 18px;
-            font-weight: 600;
-        }
-        
-        
-        main {
-            flex: 1;
-            padding: 20px 0;
-        }
-        
-        
-        .card {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            overflow: hidden;
-        }
-        
-        .card-header {
-            background: #edf2f7;
-            padding: 12px 16px;
-            border-bottom: 1px solid #e2e8f0;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        
-        .card-body {
-            padding: 16px;
-        }
-        
-        
-        .search-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-            flex-wrap: wrap;
-        }
-        
-        .tab-btn {
-            padding: 8px 16px;
-            font-size: 13px;
-            font-weight: 500;
-            border: 1px solid #e2e8f0;
-            background: white;
-            color: #4a5568;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .tab-btn:hover {
-            border-color: #3182ce;
-            color: #3182ce;
-        }
-        
-        .tab-btn.active {
-            background: #3182ce;
-            border-color: #3182ce;
-            color: white;
-        }
-        
-        
-        .search-form {
-            display: none;
-        }
-        
-        .search-form.active {
-            display: block;
-        }
-        
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 16px;
-            margin-bottom: 16px;
-        }
-        
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .form-group label {
-            font-size: 12px;
-            font-weight: 500;
-            color: #4a5568;
-            margin-bottom: 6px;
-        }
-        
-        .form-group input,
-        .form-group select {
-            padding: 10px 12px;
-            font-size: 13px;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            transition: all 0.2s;
-            background: white;
-        }
-        
-        .form-group input:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #3182ce;
-            box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
-        }
-        
-        .form-hint {
-            font-size: 12px;
-            color: #718096;
-            margin-bottom: 16px;
-        }
-        
-        
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 16px;
-            padding-top: 16px;
-            border-top: 1px solid #e2e8f0;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            font-size: 13px;
-            font-weight: 500;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .btn-primary {
-            background: #3182ce;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: #2b6cb0;
-        }
-        
-        .btn-secondary {
-            background: #718096;
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: #4a5568;
-        }
-        
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        
-        .stats-row {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        
-        .stat-item {
-            background: #f7fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            padding: 12px;
-            text-align: center;
-        }
-        
-        .stat-item .value {
-            font-size: 20px;
-            font-weight: 700;
-            color: #1a365d;
-        }
-        
-        .stat-item .label {
-            font-size: 11px;
-            color: #718096;
-            margin-top: 2px;
-        }
-        
-        
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-        
-        .loading.show {
-            display: block;
-        }
-        
-        .spinner {
-            width: 32px;
-            height: 32px;
-            border: 3px solid #e2e8f0;
-            border-top-color: #3182ce;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 12px;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
-        .loading p {
-            font-size: 13px;
-            color: #718096;
-        }
-        
-        
-        .message {
-            padding: 12px 16px;
-            border-radius: 6px;
-            margin-bottom: 16px;
-            font-size: 13px;
-            display: none;
-        }
-        
-        .message.show {
-            display: block;
-        }
-        
-        .message.error {
-            background: #fed7d7;
-            color: #c53030;
-            border-left: 3px solid #c53030;
-        }
-        
-        .message.success {
-            background: #c6f6d5;
-            color: #276749;
-            border-left: 3px solid #38a169;
-        }
-        
-        
-        .log-panel {
-            background: #1a202c;
-            color: #a0aec0;
-            padding: 12px;
-            border-radius: 6px;
-            font-family: monospace;
-            font-size: 11px;
-            max-height: 180px;
-            overflow-y: auto;
-            margin-bottom: 16px;
-            display: none;
-        }
-        
-        .log-panel.show {
-            display: block;
-        }
-        
-        .log-panel .log-entry {
-            margin-bottom: 2px;
-            line-height: 1.5;
-        }
-        
-        .log-panel .log-time {
-            color: #718096;
-        }
-        
-        .log-panel .log-success {
-            color: #68d391;
-        }
-        
-        .log-panel .log-error {
-            color: #fc8181;
-        }
-        
-        .log-panel .log-info {
-            color: #63b3ed;
-        }
-        
-        .log-panel .log-warn {
-            color: #f6ad55;
-        }
-        
-        .log-panel .log-header {
-            color: #b794f4;
-            font-weight: bold;
-            margin-top: 6px;
-            margin-bottom: 4px;
-        }
-        
-        .log-panel .log-summary {
-            color: #68d391;
-            font-weight: bold;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid #4a5568;
-        }
-        
-        
-        .table-wrapper {
-            overflow-x: auto;
-            display: none;
-        }
-        
-        .table-wrapper.show {
-            display: block;
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 12px;
-        }
-        
-        thead {
-            background: #edf2f7;
-        }
-        
-        th {
-            padding: 10px 8px;
-            text-align: left;
-            font-weight: 600;
-            color: #4a5568;
-            border-bottom: 2px solid #e2e8f0;
-            white-space: nowrap;
-            font-size: 11px;
-        }
-        
-        td {
-            padding: 8px;
-            border-bottom: 1px solid #e2e8f0;
-            color: #1a202c;
-        }
-        
-        tbody tr:hover {
-            background: #f7fafc;
-        }
-        
-        .highlight {
-            background: #fefcbf !important;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 2px 6px;
-            font-size: 10px;
-            font-weight: 600;
-            border-radius: 4px;
-        }
-        
-        .badge-arrival {
-            background: #c6f6d5;
-            color: #276749;
-        }
-        
-        .badge-departure {
-            background: #fed7d7;
-            color: #c53030;
-        }
-        
-        
-        .no-results {
-            text-align: center;
-            padding: 40px;
-            display: none;
-        }
-        
-        .no-results.show {
-            display: block;
-        }
-        
-        .no-results h3 {
-            font-size: 14px;
-            color: #4a5568;
-            margin-bottom: 8px;
-        }
-        
-        .no-results p {
-            font-size: 12px;
-            color: #718096;
-        }
-        
-        
-        footer {
-            background: #2d3748;
-            color: #a0aec0;
-            padding: 16px 0;
-            margin-top: auto;
-        }
-        
-        footer .container {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }
-        
-        .footer-links {
-            font-size: 12px;
-            line-height: 1.8;
-        }
-        
-        .footer-links a {
-            color: #90cdf4;
-            text-decoration: none;
-        }
-        
-        .footer-links a:hover {
-            text-decoration: underline;
-        }
-        
-        .footer-version {
-            font-size: 12px;
-            color: #718096;
-        }
-        
-        
-        @media (max-width: 768px) {
-            .search-tabs {
-                flex-direction: column;
-            }
-            
-            .tab-btn {
-                text-align: center;
-            }
-            
-            .btn-group {
-                flex-wrap: wrap;
-            }
-            
-            .btn {
-                flex: 1;
-                min-width: 100px;
-                text-align: center;
-            }
-            
-            footer .container {
-                flex-direction: column;
-                gap: 12px;
-            }
-            
-            .footer-version {
-                align-self: flex-start;
-            }
-        }
-    
-</style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+      background: #f7fafc;
+      color: #1a202c;
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      width: 100%;
+    }
+
+    header {
+      background: #1a365d;
+      color: white;
+      padding: 16px 0;
+    }
+
+    header h1 {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    main { flex: 1; padding: 20px 0; }
+
+    .card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      background: #edf2f7;
+      padding: 12px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .card-body { padding: 16px; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #4a5568;
+      margin-bottom: 6px;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 10px 12px;
+      font-size: 13px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #3182ce;
+      box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
+    }
+
+    .form-group input:disabled,
+    .form-group select:disabled {
+      background: #edf2f7;
+      color: #718096;
+      cursor: not-allowed;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: #718096;
+      margin-bottom: 12px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .checkbox-row input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #3182ce;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 500;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary { background: #3182ce; color: white; }
+    .btn-primary:hover { background: #2b6cb0; }
+
+    .btn-secondary { background: #718096; color: white; }
+    .btn-secondary:hover { background: #4a5568; }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-item {
+      background: #f7fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .stat-item .value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a365d;
+    }
+
+    .stat-item .label {
+      font-size: 11px;
+      color: #718096;
+      margin-top: 2px;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 40px;
+    }
+
+    .loading.show { display: block; }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #e2e8f0;
+      border-top-color: #3182ce;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading p {
+      font-size: 13px;
+      color: #718096;
+    }
+
+    .message {
+      padding: 12px 16px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .message.show { display: block; }
+
+    .message.error {
+      background: #fed7d7;
+      color: #c53030;
+      border-left: 3px solid #c53030;
+    }
+
+    .message.success {
+      background: #c6f6d5;
+      color: #276749;
+      border-left: 3px solid #38a169;
+    }
+
+    .log-panel {
+      background: #1a202c;
+      color: #a0aec0;
+      padding: 12px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 11px;
+      max-height: 180px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    .log-panel.show { display: block; }
+
+    .log-panel .log-entry { margin-bottom: 2px; line-height: 1.5; }
+    .log-panel .log-time { color: #718096; }
+    .log-panel .log-success { color: #68d391; }
+    .log-panel .log-error { color: #fc8181; }
+    .log-panel .log-info { color: #63b3ed; }
+    .log-panel .log-warn { color: #f6ad55; }
+    .log-panel .log-header { color: #b794f4; font-weight: bold; margin-top: 6px; margin-bottom: 4px; }
+    .log-panel .log-summary { color: #68d391; font-weight: bold; margin-top: 8px; padding-top: 8px; border-top: 1px solid #4a5568; }
+
+    .table-wrapper {
+      overflow-x: auto;
+      display: none;
+    }
+
+    .table-wrapper.show { display: block; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    thead { background: #edf2f7; }
+
+    th {
+      padding: 10px 8px;
+      text-align: left;
+      font-weight: 600;
+      color: #4a5568;
+      border-bottom: 2px solid #e2e8f0;
+      white-space: nowrap;
+      font-size: 11px;
+    }
+
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #1a202c;
+    }
+
+    tbody tr:hover { background: #f7fafc; }
+
+    .highlight { background: #fefcbf !important; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 4px;
+    }
+
+    .badge-arrival { background: #c6f6d5; color: #276749; }
+    .badge-departure { background: #fed7d7; color: #c53030; }
+
+    .no-results {
+      text-align: center;
+      padding: 40px;
+      display: none;
+    }
+
+    .no-results.show { display: block; }
+
+    .no-results h3 {
+      font-size: 14px;
+      color: #4a5568;
+      margin-bottom: 8px;
+    }
+
+    .no-results p {
+      font-size: 12px;
+      color: #718096;
+    }
+
+    footer {
+      background: #2d3748;
+      color: #a0aec0;
+      padding: 16px 0;
+      margin-top: auto;
+    }
+
+    footer .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links {
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .footer-links a {
+      color: #90cdf4;
+      text-decoration: none;
+    }
+
+    .footer-links a:hover { text-decoration: underline; }
+
+    .footer-version {
+      font-size: 12px;
+      color: #718096;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+      .btn-group { flex-wrap: wrap; }
+      .btn { flex: 1; min-width: 120px; text-align: center; }
+    }
+  </style>
 </head>
+
 <body>
-    <header>
-        <div class="container">
-            <h1>海事處船隻進出港資料查詢</h1>
-        </div>
-    </header>
-    
-    <main>
-        <div class="container">
-            
-            <div class="card">
-                <div class="card-header">查詢選項</div>
-                <div class="card-body">
-                    
-                    <div class="search-tabs">
-                        <button class="tab-btn active" data-mode="realtime" onclick="switchMode('realtime')">
-                            即時查詢（過去36小時）
-                        </button>
-                        <button class="tab-btn" data-mode="historical" onclick="switchMode('historical')">
-                            歷史資料查詢
-                        </button>
-                    </div>
-                    
-                    
-                    <div class="search-form active" id="form-realtime">
-                        <p class="form-hint">查詢過去36小時內抵港或離港的船隻資料。</p>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="vesselNameRealtime">船隻名稱（可選）</label>
-                                <input type="text" id="vesselNameRealtime" placeholder="輸入船隻名稱">
-                            </div>
-                            <div class="form-group">
-                                <label for="dataTypeRealtime">資料類型</label>
-                                <select id="dataTypeRealtime">
-                                    <option value="both">抵港及離港</option>
-                                    <option value="arrival">僅抵港</option>
-                                    <option value="departure">僅離港</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    
-                    <div class="search-form" id="form-historical">
-                        <p class="form-hint">查詢歷史進出港記錄（日期範圍最多5天）。</p>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="vesselNameHistorical">船隻名稱（可選）</label>
-                                <input type="text" id="vesselNameHistorical" placeholder="輸入船隻名稱">
-                            </div>
-                            <div class="form-group">
-                                <label for="startDateHistorical">開始日期</label>
-                                <input type="date" id="startDateHistorical">
-                            </div>
-                            <div class="form-group">
-                                <label for="endDateHistorical">結束日期</label>
-                                <input type="date" id="endDateHistorical">
-                            </div>
-                            <div class="form-group">
-                                <label for="dataTypeHistorical">資料類型</label>
-                                <select id="dataTypeHistorical">
-                                    <option value="both">抵港及離港</option>
-                                    <option value="arrival">僅抵港</option>
-                                    <option value="departure">僅離港</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="btn-group">
-                        <button class="btn btn-primary" onclick="performSearch()">搜尋</button>
-                        <button class="btn btn-secondary" onclick="clearSearch()">清除</button>
-                    </div>
-                </div>
-            </div>
-            
-            
-            <div class="card">
-                <div class="card-header">搜尋結果</div>
-                <div class="card-body">
-                    <div class="message error" id="errorMessage"></div>
-                    <div class="message success" id="successMessage"></div>
-                    
-                    <div class="log-panel" id="logPanel"></div>
-                    
-                    <div class="loading" id="loading">
-                        <div class="spinner"></div>
-                        <p id="loadingText">正在獲取資料...</p>
-                    </div>
-                    
-                    <div class="stats-row" id="stats" style="display: none;"></div>
-                    
-                    <div class="no-results" id="noResults">
-                        <h3>沒有找到結果</h3>
-                        <p>請嘗試調整搜尋條件</p>
-                    </div>
-                    
-                    <div class="table-wrapper" id="tableWrapper">
-                        <table>
-                            <thead id="tableHead"></thead>
-                            <tbody id="tableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-    
-    <footer>
-        <div class="container">
-            <div class="footer-links">
-                <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/92cf7f6f-be58-4072-84ff-3b8c612bf204" target="_blank">在過去三十六小時抵港的船隻</a><br>
-                <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/7cafe2bc-066f-4665-b527-d4b792f96e4a" target="_blank">在過去三十六小時離港的船隻</a>
-            </div>
-            <div class="footer-version">20260127.3</div>
-        </div>
-    </footer>
+  <header>
+    <div class="container">
+      <h1>海事處船隻進出港資料查詢</h1>
+    </div>
+  </header>
 
-    <script>
-        
-        const CONFIG = {
-            arrivalUrl: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML',
-            departureUrl: 'https://www.mardep.gov.hk/e_files/en/opendata/RP05505i.XML',
-            historicalApiBase: 'https://api.data.gov.hk/v1/historical-archive/get-file',
-            corsProxies: [
-                'https://api.allorigins.win/raw?url=',
-                'https://corsproxy.io/?'
-            ],
-            maxDays: 5
-        };
-        
-        let currentData = [];
-        let currentMode = 'realtime';
-        
-        
-        document.addEventListener('DOMContentLoaded', function() {
-            const today = new Date().toISOString().split('T')[0];
-            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            
-            document.getElementById('startDateHistorical').value = yesterday;
-            document.getElementById('endDateHistorical').value = today;
+  <main>
+    <div class="container">
+      <div class="card">
+        <div class="card-header">查詢選項</div>
+        <div class="card-body">
+          <p class="form-hint">可選擇「最近 36 小時數據」或取消勾選以查詢歷史日期範圍（最多 20 天）。</p>
+
+          <div class="checkbox-row">
+            <input type="checkbox" id="useLast36h" checked />
+            <label for="useLast36h" style="margin:0; font-size:13px; font-weight:600; color:#1a365d;">最近 36 小時數據</label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="vesselName">船隻名稱（可選）</label>
+              <input type="text" id="vesselName" placeholder="輸入船隻名稱" />
+            </div>
+
+            <div class="form-group">
+              <label for="startDate">最近 36 小時數據開始日期</label>
+              <input type="date" id="startDate" />
+            </div>
+
+            <div class="form-group">
+              <label for="endDate">結束日期</label>
+              <input type="date" id="endDate" />
+            </div>
+
+            <div class="form-group">
+              <label for="dataType">資料類型</label>
+              <select id="dataType">
+                <option value="both">抵港及離港</option>
+                <option value="arrival">僅抵港</option>
+                <option value="departure">僅離港</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="btn-group">
+            <button class="btn btn-primary" id="searchBtn" onclick="performSearch()">搜尋</button>
+            <button class="btn btn-secondary" onclick="clearSearch()">清除</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">搜尋結果</div>
+        <div class="card-body">
+          <div class="message error" id="errorMessage"></div>
+          <div class="message success" id="successMessage"></div>
+
+          <div class="log-panel" id="logPanel"></div>
+
+          <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">正在獲取資料...</p>
+          </div>
+
+          <div class="stats-row" id="stats" style="display:none;"></div>
+
+          <div class="no-results" id="noResults">
+            <h3>沒有找到結果</h3>
+            <p>請嘗試調整搜尋條件</p>
+          </div>
+
+          <div class="table-wrapper" id="tableWrapper">
+            <table>
+              <thead id="tableHead"></thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div class="container">
+      <div class="footer-links">
+        <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML" target="_blank">過去三十六小時抵港的船隻</a><br />
+        <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05505i.XML" target="_blank">過去三十六小時離港的船隻</a>
+      </div>
+      <div class="footer-version">20260202.16</div>
+    </div>
+  </footer>
+
+  <script>
+    const CONFIG = {
+      arrivalUrl: "https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML",
+      departureUrl: "https://www.mardep.gov.hk/e_files/en/opendata/RP05505i.XML",
+      historicalApiBase: "https://api.data.gov.hk/v1/historical-archive/get-file",
+      corsProxies: ["https://api.allorigins.win/raw?url=", "https://corsproxy.io/?"],
+      maxDays: 20,
+      maxFetchAttempts: 10,
+      retryBaseDelayMs: 250
+    };
+
+    let currentData = [];
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      document.getElementById("startDate").value = yesterday;
+      document.getElementById("endDate").value = today;
+
+      const cb = document.getElementById("useLast36h");
+      cb.addEventListener("change", syncDateEnabledState);
+      syncDateEnabledState();
+    });
+
+    function syncDateEnabledState() {
+      const useLast36h = document.getElementById("useLast36h").checked;
+      const startEl = document.getElementById("startDate");
+      const endEl = document.getElementById("endDate");
+      startEl.disabled = useLast36h;
+      endEl.disabled = useLast36h;
+    }
+
+    function sleep(ms) {
+      return new Promise(r => setTimeout(r, ms));
+    }
+
+    function log(message, type = "info") {
+      const logPanel = document.getElementById("logPanel");
+      const time = new Date().toLocaleTimeString("zh-HK", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      const entry = document.createElement("div");
+      entry.className = "log-entry";
+      entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
+      logPanel.appendChild(entry);
+      logPanel.scrollTop = logPanel.scrollHeight;
+      logPanel.classList.add("show");
+    }
+
+    function logHeader(message) {
+      const logPanel = document.getElementById("logPanel");
+      const entry = document.createElement("div");
+      entry.className = "log-entry log-header";
+      entry.textContent = `▶ ${message}`;
+      logPanel.appendChild(entry);
+      logPanel.scrollTop = logPanel.scrollHeight;
+      logPanel.classList.add("show");
+    }
+
+    function logSummary(message) {
+      const logPanel = document.getElementById("logPanel");
+      const entry = document.createElement("div");
+      entry.className = "log-entry log-summary";
+      entry.textContent = `✓ ${message}`;
+      logPanel.appendChild(entry);
+      logPanel.scrollTop = logPanel.scrollHeight;
+    }
+
+    function clearLog() {
+      const logPanel = document.getElementById("logPanel");
+      logPanel.innerHTML = "";
+      logPanel.classList.remove("show");
+    }
+
+    function clearMessages() {
+      document.querySelectorAll(".message").forEach(el => el.classList.remove("show"));
+    }
+
+    function showError(message) {
+      const el = document.getElementById("errorMessage");
+      el.textContent = message;
+      el.classList.add("show");
+    }
+
+    function showSuccess(message) {
+      const el = document.getElementById("successMessage");
+      el.textContent = message;
+      el.classList.add("show");
+    }
+
+    function showLoading(text) {
+      document.getElementById("loading").classList.add("show");
+      document.getElementById("loadingText").textContent = text || "正在獲取資料...";
+      document.getElementById("tableWrapper").classList.remove("show");
+      document.getElementById("stats").style.display = "none";
+      hideNoResults();
+    }
+
+    function hideLoading() {
+      document.getElementById("loading").classList.remove("show");
+    }
+
+    function showNoResults() {
+      document.getElementById("noResults").classList.add("show");
+    }
+
+    function hideNoResults() {
+      document.getElementById("noResults").classList.remove("show");
+    }
+
+    function clearResults() {
+      currentData = [];
+      document.getElementById("tableWrapper").classList.remove("show");
+      document.getElementById("stats").style.display = "none";
+      hideNoResults();
+      clearMessages();
+      clearLog();
+    }
+
+    function validateDateRange(startDate, endDate) {
+      if (!startDate || !endDate) return { valid: false, error: "請選擇開始和結束日期" };
+      if (new Date(startDate) > new Date(endDate)) return { valid: false, error: "開始日期必須早於結束日期" };
+      const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
+      if (daysDiff > CONFIG.maxDays) return { valid: false, error: `日期範圍不可超過${CONFIG.maxDays}天` };
+      return { valid: true, days: daysDiff };
+    }
+
+    async function performSearch() {
+      clearMessages();
+      clearResults();
+      clearLog();
+
+      const vesselName = document.getElementById("vesselName").value.trim().toUpperCase();
+      const dataType = document.getElementById("dataType").value;
+      const useLast36h = document.getElementById("useLast36h").checked;
+
+      try {
+        if (useLast36h) {
+          logHeader("最近 36 小時數據");
+          showLoading("正在獲取最近 36 小時船隻資料...");
+          const data = await searchLast36Hours(vesselName, dataType);
+          displayResults(data, vesselName);
+          return;
+        }
+
+        const startDate = document.getElementById("startDate").value;
+        const endDate = document.getElementById("endDate").value;
+        const validation = validateDateRange(startDate, endDate);
+        if (!validation.valid) {
+          showError(validation.error);
+          return;
+        }
+
+        logHeader("歷史資料查詢");
+        log(`日期範圍: ${startDate} 至 ${endDate} (${validation.days} 天)`, "info");
+        showLoading("正在獲取歷史資料...");
+
+        const allData = await fetchHistoricalDataRangeOptimized(startDate, endDate, dataType);
+        let filtered = filterBySelectedDateRange(allData, startDate, endDate);
+
+        if (vesselName) {
+          filtered = filtered.filter(item => item.vesselName && item.vesselName.toUpperCase().includes(vesselName));
+          log(`篩選 "${vesselName}": ${filtered.length} 筆符合`, "info");
+        }
+
+        const arrivals = filtered.filter(r => r.type === "抵港").length;
+        const departures = filtered.filter(r => r.type === "離港").length;
+        logSummary(`完成: 共 ${filtered.length} 筆記錄 (抵港 ${arrivals}, 離港 ${departures})`);
+        displayResults(filtered, vesselName);
+      } catch (error) {
+        log(`錯誤: ${error.message}`, "error");
+        showError(`搜尋時發生錯誤：${error.message}`);
+        hideLoading();
+      }
+    }
+
+    async function searchLast36Hours(vesselName, dataType) {
+      let allData = [];
+      let arrivalCount = 0;
+      let departureCount = 0;
+
+      if (dataType === "both" || dataType === "arrival") {
+        log("獲取抵港資料...", "info");
+        const arrivalData = await fetchXMLDataEnsured(CONFIG.arrivalUrl, "arrival");
+        arrivalCount = arrivalData.length;
+        allData = allData.concat(arrivalData);
+        log(`抵港: ${arrivalCount} 筆`, "success");
+      }
+
+      if (dataType === "both" || dataType === "departure") {
+        log("獲取離港資料...", "info");
+        const departureData = await fetchXMLDataEnsured(CONFIG.departureUrl, "departure");
+        departureCount = departureData.length;
+        allData = allData.concat(departureData);
+        log(`離港: ${departureCount} 筆`, "success");
+      }
+
+      if (vesselName) {
+        allData = allData.filter(item => item.vesselName && item.vesselName.toUpperCase().includes(vesselName));
+        log(`篩選 "${vesselName}": ${allData.length} 筆符合`, "info");
+      }
+
+      logSummary(`完成: 共 ${allData.length} 筆記錄 (抵港 ${arrivalCount}, 離港 ${departureCount})`);
+      return dedupeRecords(allData);
+    }
+
+    function parseDateOnlyFromVesselDate(value) {
+      if (!value) return null;
+      const s = String(value).trim();
+      const first = s.split(/\s+/)[0];
+      const iso = first.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
+      const m = first.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
+      if (!m) return null;
+      const dd = Number(m[1]);
+      const mon = m[2].toUpperCase();
+      const yyyy = Number(m[3]);
+      const map = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+      const mm = map[mon];
+      if (mm === undefined || !Number.isFinite(dd) || !Number.isFinite(yyyy)) return null;
+      return new Date(yyyy, mm, dd);
+    }
+
+    function filterBySelectedDateRange(data, startDateStr, endDateStr) {
+      const start = new Date(startDateStr);
+      const end = new Date(endDateStr);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+
+      return data.filter(item => {
+        const d = parseDateOnlyFromVesselDate(item.time ?? item.date ?? item["日期"]);
+        if (!d || Number.isNaN(d.getTime())) return false;
+        d.setHours(0, 0, 0, 0);
+        return d >= start && d <= end;
+      });
+    }
+
+    function getLatestTimeSlotForToday() {
+      const now = new Date();
+      const h = now.getHours();
+      if (h >= 16) return "1600";
+      if (h >= 8) return "0800";
+      if (h >= 0) return "0000";
+      return "0000";
+    }
+
+    function ymd(date) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function ymdCompact(dateStr) {
+      return dateStr.replace(/-/g, "");
+    }
+
+    async function fetchHistoricalDataRangeOptimized(startDate, endDate, dataType = "both") {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const todayStr = new Date().toISOString().split("T")[0];
+
+      const all = [];
+      const seen = new Set();
+
+      const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      let dayIndex = 0;
+
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        dayIndex += 1;
+
+        const dayStr = ymd(d);
+        const snap = new Date(d);
+        snap.setDate(snap.getDate() + 1);
+
+        let snapDateStr = ymd(snap);
+        let snapTime = "0000";
+
+        if (snapDateStr > todayStr) {
+          snapDateStr = todayStr;
+          snapTime = getLatestTimeSlotForToday();
+        }
+
+        const timeParam = `${ymdCompact(snapDateStr)}-${snapTime}`;
+
+        showLoading(`正在獲取 ${dayStr} 的資料 (${dayIndex}/${totalDays})...`);
+        log(`[${dayIndex}/${totalDays}] ${dayStr} → 取樣點 ${snapDateStr} ${snapTime}`, "info");
+
+        let dayArrivals = 0;
+        let dayDepartures = 0;
+
+        if (dataType === "both" || dataType === "arrival") {
+          const a = await fetchHistoricalDataEnsured(CONFIG.arrivalUrl, timeParam, "arrival");
+          for (const item of a) {
+            const k = recordKey(item);
+            if (!seen.has(k)) {
+              seen.add(k);
+              all.push(item);
+              dayArrivals += 1;
+            }
+          }
+        }
+
+        if (dataType === "both" || dataType === "departure") {
+          const b = await fetchHistoricalDataEnsured(CONFIG.departureUrl, timeParam, "departure");
+          for (const item of b) {
+            const k = recordKey(item);
+            if (!seen.has(k)) {
+              seen.add(k);
+              all.push(item);
+              dayDepartures += 1;
+            }
+          }
+        }
+
+        const parts = [];
+        if (dataType === "both" || dataType === "arrival") parts.push(`抵港 ${dayArrivals}`);
+        if (dataType === "both" || dataType === "departure") parts.push(`離港 ${dayDepartures}`);
+        log(`  → ${parts.join(", ")}`, "success");
+      }
+
+      return all;
+    }
+
+    function recordKey(r) {
+      return `${(r.vesselName || "").toUpperCase()}|${r.type || ""}|${r.time || ""}|${r.location || ""}|${r.callSign || ""}`;
+    }
+
+    function dedupeRecords(records) {
+      const seen = new Set();
+      const out = [];
+      for (const r of records) {
+        const k = recordKey(r);
+        if (!seen.has(k)) {
+          seen.add(k);
+          out.push(r);
+        }
+      }
+      return out;
+    }
+
+    async function fetchHistoricalDataEnsured(rawUrl, timeParam, type) {
+      const historicalUrl = `${CONFIG.historicalApiBase}?url=${encodeURIComponent(rawUrl)}&time=${timeParam}`;
+      const data = await fetchXMLDataEnsured(historicalUrl, type, true);
+      return data;
+    }
+
+    async function fetchXMLDataEnsured(url, type, isHistorical = false) {
+      let attempt = 0;
+      while (attempt < CONFIG.maxFetchAttempts) {
+        attempt += 1;
+        const label = isHistorical ? `歷史API` : `即時XML`;
+        log(`${label} 連線中... (第 ${attempt}/${CONFIG.maxFetchAttempts} 次)`, "info");
+
+        const data = await fetchXMLDataOnce(url, type);
+        if (Array.isArray(data) && data.length > 0) return data;
+
+        const delay = CONFIG.retryBaseDelayMs * attempt;
+        log(`未取到資料，${delay}ms 後重試...`, "warn");
+        await sleep(delay);
+      }
+      throw new Error("無法從資料來源取得任何資料（已多次重試）");
+    }
+
+    async function fetchXMLDataOnce(url, type) {
+      const direct = await tryFetchAndParse(url, type);
+      if (direct.length > 0) return direct;
+
+      for (let i = 0; i < CONFIG.corsProxies.length; i++) {
+        const proxyUrl = CONFIG.corsProxies[i] + encodeURIComponent(url);
+        const viaProxy = await tryFetchAndParse(proxyUrl, type);
+        if (viaProxy.length > 0) return viaProxy;
+      }
+      return [];
+    }
+
+    async function tryFetchAndParse(url, type) {
+      try {
+        const response = await fetch(url, { cache: "no-store" });
+        if (!response.ok) return [];
+        const xmlText = await response.text();
+        if (xmlText.length < 80) return [];
+        if (!(xmlText.includes("<?xml") || xmlText.includes("<RP0") || xmlText.includes("<G_SQL"))) return [];
+        const parsed = parseVesselXML(xmlText, type);
+        if (!Array.isArray(parsed)) return [];
+        return parsed;
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function parseVesselXML(xmlText, type) {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xmlText, "text/xml");
+      const data = [];
+
+      const parseError = xmlDoc.querySelector("parsererror");
+      if (parseError) return data;
+
+      const recordSelectors = ["G_SQL1", "Record", "record", "RECORD", "row", "Row", "ROW"];
+      let records = [];
+
+      for (const selector of recordSelectors) {
+        records = xmlDoc.getElementsByTagName(selector);
+        if (records.length > 0) break;
+      }
+
+      if (records.length === 0) {
+        const root = xmlDoc.documentElement;
+        if (root && root.children && root.children.length > 0) records = root.children;
+      }
+
+      for (let i = 0; i < records.length; i++) {
+        const record = parseVesselRecord(records[i], type);
+        if (record.vesselName) data.push(record);
+      }
+
+      return data;
+    }
+
+    function parseVesselRecord(element, type) {
+      const getVal = (names) => {
+        for (const name of names) {
+          let el = element.querySelector(name);
+          if (!el) {
+            const els = element.getElementsByTagName(name);
+            if (els.length > 0) el = els[0];
+          }
+          if (el && el.textContent) return el.textContent.trim();
+        }
+        return "";
+      };
+
+      const vesselName = getVal(["VESSEL_NAME", "Vessel_Name", "vessel_name", "VesselName"]);
+
+      let time = "";
+      if (type === "arrival") {
+        time = getVal(["ARRIVAL_TIME", "Arrival_Time", "arrival_time", "ArrivalTime"]);
+      } else {
+        time = getVal(["ATD_TIME", "Atd_Time", "atd_time", "AtdTime", "DEPARTURE_TIME"]);
+      }
+
+      let location = "";
+      if (type === "arrival") {
+        location = getVal(["CURRENT_LOCATION", "Current_Location", "current_location", "ANCHORAGE", "Anchorage"]);
+      } else {
+        location = getVal(["LAST_BERTH", "Last_Berth", "last_berth", "LastBerth"]);
+      }
+
+      return {
+        vesselName: vesselName,
+        type: type === "arrival" ? "抵港" : "離港",
+        time: time,
+        location: location,
+        shipType: getVal(["SHIP_TYPE", "Ship_Type", "ship_type", "ShipType"]),
+        callSign: getVal(["CALL_SIGN", "Call_Sign", "call_sign", "CallSign"]),
+        agentName: getVal(["AGENT_NAME", "Agent_Name", "agent_name", "AgentName"]),
+        remark: getVal(["REMARK", "Remark", "remark"])
+      };
+    }
+
+    function displayResults(data, searchTerm) {
+      hideLoading();
+      currentData = data;
+
+      if (!Array.isArray(data) || data.length === 0) {
+        showNoResults();
+        return;
+      }
+
+      hideNoResults();
+      showSuccess(`找到 ${data.length} 筆記錄`);
+      displayStats(data);
+      createTable(data, searchTerm);
+    }
+
+    function displayStats(data) {
+      const arrivals = data.filter(r => r.type === "抵港").length;
+      const departures = data.filter(r => r.type === "離港").length;
+
+      const statsHtml = `
+        <div class="stat-item">
+          <div class="value">${data.length}</div>
+          <div class="label">總記錄數</div>
+        </div>
+        <div class="stat-item">
+          <div class="value">${arrivals}</div>
+          <div class="label">抵港</div>
+        </div>
+        <div class="stat-item">
+          <div class="value">${departures}</div>
+          <div class="label">離港</div>
+        </div>
+      `;
+
+      const stats = document.getElementById("stats");
+      stats.innerHTML = statsHtml;
+      stats.style.display = "grid";
+    }
+
+    function createTable(data, searchTerm) {
+      const tableHead = document.getElementById("tableHead");
+      const tableBody = document.getElementById("tableBody");
+      const tableWrapper = document.getElementById("tableWrapper");
+
+      tableHead.innerHTML = "";
+      tableBody.innerHTML = "";
+
+      const columns = [
+        { key: "vesselName", label: "船隻名稱" },
+        { key: "type", label: "類型" },
+        { key: "time", label: "時間" },
+        { key: "location", label: "位置" },
+        { key: "shipType", label: "船舶類型" },
+        { key: "callSign", label: "呼號" },
+        { key: "agentName", label: "代理" }
+      ];
+
+      const headerRow = document.createElement("tr");
+      columns.forEach(col => {
+        const th = document.createElement("th");
+        th.textContent = col.label;
+        headerRow.appendChild(th);
+      });
+      tableHead.appendChild(headerRow);
+
+      data.forEach(record => {
+        const row = document.createElement("tr");
+
+        columns.forEach(col => {
+          const td = document.createElement("td");
+          const value = record[col.key] || "-";
+
+          if (col.key === "type") {
+            const badge = document.createElement("span");
+            badge.className = `badge ${value === "抵港" ? "badge-arrival" : "badge-departure"}`;
+            badge.textContent = value;
+            td.appendChild(badge);
+          } else {
+            td.textContent = value;
+            if (searchTerm && String(value).toUpperCase().includes(searchTerm.toUpperCase())) td.classList.add("highlight");
+          }
+          row.appendChild(td);
         });
-        
-        
-        function log(message, type = 'info') {
-            const logPanel = document.getElementById('logPanel');
-            const time = new Date().toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const entry = document.createElement('div');
-            entry.className = 'log-entry';
-            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-${type}">${message}</span>`;
-            logPanel.appendChild(entry);
-            logPanel.scrollTop = logPanel.scrollHeight;
-            logPanel.classList.add('show');
-            console.log(`[${type}] ${message}`);
-        }
-        
-        function logHeader(message) {
-            const logPanel = document.getElementById('logPanel');
-            const entry = document.createElement('div');
-            entry.className = 'log-entry log-header';
-            entry.textContent = `▶ ${message}`;
-            logPanel.appendChild(entry);
-            logPanel.scrollTop = logPanel.scrollHeight;
-            logPanel.classList.add('show');
-        }
-        
-        function logSummary(message) {
-            const logPanel = document.getElementById('logPanel');
-            const entry = document.createElement('div');
-            entry.className = 'log-entry log-summary';
-            entry.textContent = `✓ ${message}`;
-            logPanel.appendChild(entry);
-            logPanel.scrollTop = logPanel.scrollHeight;
-        }
-        
-        function clearLog() {
-            const logPanel = document.getElementById('logPanel');
-            logPanel.innerHTML = '';
-            logPanel.classList.remove('show');
-        }
-        
-        
-        function switchMode(mode) {
-            currentMode = mode;
-            
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.mode === mode);
-            });
-            
-            document.querySelectorAll('.search-form').forEach(form => {
-                form.classList.remove('active');
-            });
-            document.getElementById(`form-${mode}`).classList.add('active');
-            
-            clearResults();
-        }
-        
-        
-        function validateDateRange(startDate, endDate) {
-            if (!startDate || !endDate) {
-                return { valid: false, error: '請選擇開始和結束日期' };
-            }
-            
-            if (new Date(startDate) > new Date(endDate)) {
-                return { valid: false, error: '開始日期必須早於結束日期' };
-            }
-            
-            const daysDiff = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24)) + 1;
-            if (daysDiff > CONFIG.maxDays) {
-                return { valid: false, error: `日期範圍不可超過${CONFIG.maxDays}天` };
-            }
-            
-            return { valid: true, days: daysDiff };
-        }
-        
-        
-        async function performSearch() {
-            clearMessages();
-            clearResults();
-            clearLog();
-            
-            try {
-                switch (currentMode) {
-                    case 'realtime':
-                        await searchRealtime();
-                        break;
-                    case 'historical':
-                        await searchHistorical();
-                        break;
-                }
-            } catch (error) {
-                console.error('Search error:', error);
-                log(`錯誤: ${error.message}`, 'error');
-                showError(`搜尋時發生錯誤：${error.message}`);
-                hideLoading();
-            }
-        }
-        
-        
-        async function searchRealtime() {
-            const vesselName = document.getElementById('vesselNameRealtime').value.trim().toUpperCase();
-            const dataType = document.getElementById('dataTypeRealtime').value;
-            
-            showLoading('正在獲取即時船隻資料...');
-            logHeader('即時查詢（過去36小時）');
-            
-            let allData = [];
-            let arrivalCount = 0;
-            let departureCount = 0;
-            
-            if (dataType === 'both' || dataType === 'arrival') {
-                log('獲取抵港資料...', 'info');
-                try {
-                    const arrivalData = await fetchXMLDataSimple(CONFIG.arrivalUrl, 'arrival');
-                    arrivalCount = arrivalData.length;
-                    allData = allData.concat(arrivalData);
-                    log(`抵港: ${arrivalCount} 筆`, 'success');
-                } catch (e) {
-                    log(`抵港資料獲取失敗: ${e.message}`, 'error');
-                }
-            }
-            
-            if (dataType === 'both' || dataType === 'departure') {
-                log('獲取離港資料...', 'info');
-                try {
-                    const departureData = await fetchXMLDataSimple(CONFIG.departureUrl, 'departure');
-                    departureCount = departureData.length;
-                    allData = allData.concat(departureData);
-                    log(`離港: ${departureCount} 筆`, 'success');
-                } catch (e) {
-                    log(`離港資料獲取失敗: ${e.message}`, 'error');
-                }
-            }
-            
-            if (vesselName) {
-                allData = allData.filter(item => 
-                    item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
-                );
-                log(`篩選 "${vesselName}": ${allData.length} 筆符合`, 'info');
-            }
-            
-            logSummary(`完成: 共 ${allData.length} 筆記錄 (抵港 ${arrivalCount}, 離港 ${departureCount})`);
-            displayResults(allData, vesselName);
-        }
-        
-        
-        function parseDateOnlyFromVesselDate(value) {
-            if (!value) return null;
-            const s = String(value).trim();
-            const first = s.split(/\s+/)[0];
-            const iso = first.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-            const m = first.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-            if (!m) return null;
-            const dd = Number(m[1]);
-            const mon = m[2].toUpperCase();
-            const yyyy = Number(m[3]);
-            const map = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11 };
-            const mm = map[mon];
-            if (mm === undefined || !Number.isFinite(dd) || !Number.isFinite(yyyy)) return null;
-            return new Date(yyyy, mm, dd);
-        }
 
-        function filterBySelectedDateRange(data, startDateStr, endDateStr) {
-            const start = new Date(startDateStr);
-            const end = new Date(endDateStr);
-            start.setHours(0, 0, 0, 0);
-            end.setHours(0, 0, 0, 0);
-            return data.filter(item => {
-                const d = parseDateOnlyFromVesselDate(item.time ?? item.date ?? item['日期']);
-                if (!d || Number.isNaN(d.getTime())) return false;
-                d.setHours(0, 0, 0, 0);
-                return d >= start && d <= end;
-            });
-        }
+        tableBody.appendChild(row);
+      });
 
-        async function searchHistorical() {
-            const vesselName = document.getElementById('vesselNameHistorical').value.trim().toUpperCase();
-            const startDate = document.getElementById('startDateHistorical').value;
-            const endDate = document.getElementById('endDateHistorical').value;
-            const dataType = document.getElementById('dataTypeHistorical').value;
-            
-            
-            const validation = validateDateRange(startDate, endDate);
-            if (!validation.valid) {
-                showError(validation.error);
-                return;
-            }
-            
-            showLoading('正在獲取歷史資料...');
-            
-            if (vesselName) {
-                logHeader(`歷史資料查詢: ${vesselName}`);
-            } else {
-                logHeader('歷史資料查詢');
-            }
-            log(`日期範圍: ${startDate} 至 ${endDate} (${validation.days} 天)`, 'info');
-            
-            const allData = await fetchHistoricalDataRange(startDate, endDate, dataType);
-            
-            let filteredData = filterBySelectedDateRange(allData, startDate, endDate);
-            if (vesselName) {
-                filteredData = allData.filter(item => 
-                    item.vesselName && item.vesselName.toUpperCase().includes(vesselName)
-                );
-                log(`篩選 "${vesselName}": ${filteredData.length} 筆符合`, 'info');
-            }
-            
-            const arrivals = filteredData.filter(r => r.type === '抵港').length;
-            const departures = filteredData.filter(r => r.type === '離港').length;
-            
-            if (vesselName) {
-                logSummary(`完成: 找到 ${filteredData.length} 筆 "${vesselName}" 的記錄`);
-            } else {
-                logSummary(`完成: 共 ${filteredData.length} 筆記錄 (抵港 ${arrivals}, 離港 ${departures})`);
-            }
-            
-            displayResults(filteredData, vesselName);
-        }
-        
-        
-        function getTimeSlotsForDate(dateStr) {
-            const today = new Date().toISOString().split('T')[0];
-            const isToday = dateStr === today;
-            
-            if (!isToday) {
-                return ['0000', '0800', '1600', '2359'];
-            }
-            
-            const currentHour = new Date().getHours();
-            const slots = [];
-            
-            if (currentHour >= 0) slots.push('0000');
-            if (currentHour >= 8) slots.push('0800');
-            if (currentHour >= 16) slots.push('1600');
-            
-            if (slots.length === 0) {
-                const hourStr = currentHour.toString().padStart(2, '0') + '00';
-                slots.push(hourStr);
-            }
-            
-            return slots;
-        }
-        
-        
-        async function fetchHistoricalDataRange(startDate, endDate, dataType = 'both') {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const fetchEnd = new Date(end);
-            fetchEnd.setDate(fetchEnd.getDate() + 1);
-            let allData = [];
-            let totalArrivals = 0;
-            let totalDepartures = 0;
-            
-            const current = new Date(start);
-            let dayCount = 0;
-            const totalDays = Math.ceil((fetchEnd - start) / (1000 * 60 * 60 * 24)) + 1;
-            
-            while (current <= fetchEnd) {
-                dayCount++;
-                const dateStr = current.toISOString().split('T')[0];
-                const dateStrCompact = dateStr.replace(/-/g, '');
-                
-                const timeSlots = getTimeSlotsForDate(dateStr);
-                
-                showLoading(`正在獲取 ${dateStr} 的資料 (${dayCount}/${totalDays})...`);
-                log(`[${dayCount}/${totalDays}] ${dateStr}`, 'info');
-                
-                let dayArrivals = 0;
-                let dayDepartures = 0;
-                
-                for (const time of timeSlots) {
-                    const timeParam = `${dateStrCompact}-${time}`;
-                    
-                    if (dataType === 'both' || dataType === 'arrival') {
-                        try {
-                            const arrivalData = await fetchHistoricalData(CONFIG.arrivalUrl, timeParam, 'arrival');
-                            arrivalData.forEach(item => {
-if (!allData.some(d => d.vesselName === item.vesselName && d.time === item.time && d.type === item.type)) {
-                                    allData.push(item);
-                                    dayArrivals++;
-                                }
-                            });
-                        } catch (e) {
-                            
-                        }
-                    }
-                    
-                    if (dataType === 'both' || dataType === 'departure') {
-                        try {
-                            const departureData = await fetchHistoricalData(CONFIG.departureUrl, timeParam, 'departure');
-                            departureData.forEach(item => {
-if (!allData.some(d => d.vesselName === item.vesselName && d.time === item.time && d.type === item.type)) {
-                                    allData.push(item);
-                                    dayDepartures++;
-                                }
-                            });
-                        } catch (e) {
-                            
-                        }
-                    }
-                }
-                
-                totalArrivals += dayArrivals;
-                totalDepartures += dayDepartures;
-                
-                const parts = [];
-                if (dataType === 'both' || dataType === 'arrival') parts.push(`抵港 ${dayArrivals}`);
-                if (dataType === 'both' || dataType === 'departure') parts.push(`離港 ${dayDepartures}`);
-                log(`  → ${parts.join(', ')}`, 'success');
-                
-                current.setDate(current.getDate() + 1);
-            }
-            
-            return allData;
-        }
-        
-        
-        async function fetchHistoricalData(rawUrl, timeParam, type) {
-            const historicalUrl = `${CONFIG.historicalApiBase}?url=${encodeURIComponent(rawUrl)}&time=${timeParam}`;
-            return await fetchXMLDataSimple(historicalUrl, type, true);
-        }
-        
-        
-        async function fetchXMLDataSimple(url, type, silent = false) {
-            try {
-                const response = await fetch(url);
-                if (response.ok) {
-                    const xmlText = await response.text();
-                    if (xmlText.length > 100 && (xmlText.includes('<?xml') || xmlText.includes('<RP0'))) {
-                        return parseVesselXML(xmlText, type);
-                    }
-                }
-            } catch (e) {
-                
-            }
-            
-            for (let i = 0; i < CONFIG.corsProxies.length; i++) {
-                const proxy = CONFIG.corsProxies[i];
-                try {
-                    const proxyUrl = proxy + encodeURIComponent(url);
-                    const response = await fetch(proxyUrl);
-                    if (response.ok) {
-                        const xmlText = await response.text();
-                        if (xmlText.length > 100 && (xmlText.includes('<?xml') || xmlText.includes('<RP0') || xmlText.includes('<G_SQL'))) {
-                            return parseVesselXML(xmlText, type);
-                        }
-                    }
-                } catch (e) {
-                    
-                }
-            }
-            
-            return [];
-        }
-        
-        
-        function parseVesselXML(xmlText, type) {
-            const parser = new DOMParser();
-            const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-            const data = [];
-            
-            const parseError = xmlDoc.querySelector('parsererror');
-            if (parseError) {
-                return data;
-            }
-            
-            const recordSelectors = ['G_SQL1', 'Record', 'record', 'RECORD', 'row', 'Row', 'ROW'];
-            let records = [];
-            
-            for (const selector of recordSelectors) {
-                records = xmlDoc.getElementsByTagName(selector);
-                if (records.length > 0) break;
-            }
-            
-            if (records.length === 0) {
-                const root = xmlDoc.documentElement;
-                if (root && root.children.length > 0) {
-                    records = root.children;
-                }
-            }
-            
-            for (let i = 0; i < records.length; i++) {
-                const record = parseVesselRecord(records[i], type);
-                if (record.vesselName) {
-                    data.push(record);
-                }
-            }
-            
-            return data;
-        }
-        
-        
-        function parseVesselRecord(element, type) {
-            const getVal = (names) => {
-                for (const name of names) {
-                    let el = element.querySelector(name);
-                    if (!el) {
-                        const elements = element.getElementsByTagName(name);
-                        if (elements.length > 0) el = elements[0];
-                    }
-                    if (el && el.textContent) {
-                        return el.textContent.trim();
-                    }
-                }
-                return '';
-            };
-            
-            const vesselName = getVal(['VESSEL_NAME', 'Vessel_Name', 'vessel_name', 'VesselName']);
-            
-            let time = '';
-            if (type === 'arrival') {
-                time = getVal(['ARRIVAL_TIME', 'Arrival_Time', 'arrival_time', 'ArrivalTime']);
-            } else {
-                time = getVal(['ATD_TIME', 'Atd_Time', 'atd_time', 'AtdTime', 'DEPARTURE_TIME']);
-            }
-            
-            let location = '';
-            if (type === 'arrival') {
-                location = getVal(['CURRENT_LOCATION', 'Current_Location', 'current_location', 'ANCHORAGE', 'Anchorage']);
-            } else {
-                location = getVal(['LAST_BERTH', 'Last_Berth', 'last_berth', 'LastBerth']);
-            }
-            
-            return {
-                vesselName: vesselName,
-                type: type === 'arrival' ? '抵港' : '離港',
-                time: time,
-                location: location,
-                shipType: getVal(['SHIP_TYPE', 'Ship_Type', 'ship_type', 'ShipType']),
-                callSign: getVal(['CALL_SIGN', 'Call_Sign', 'call_sign', 'CallSign']),
-                agentName: getVal(['AGENT_NAME', 'Agent_Name', 'agent_name', 'AgentName']),
-                remark: getVal(['REMARK', 'Remark', 'remark'])
-            };
-        }
-        
-        
-        function displayResults(data, searchTerm) {
-            hideLoading();
-            currentData = data;
-            
-            if (data.length === 0) {
-                showNoResults();
-                return;
-            }
-            
-            hideNoResults();
-            showSuccess(`找到 ${data.length} 筆記錄`);
-            
-            displayStats(data);
-            createTable(data, searchTerm);
-        }
-        
-        
-        function displayStats(data) {
-            const arrivals = data.filter(r => r.type === '抵港').length;
-            const departures = data.filter(r => r.type === '離港').length;
-            
-            const statsHtml = `
-                <div class="stat-item">
-                    <div class="value">${data.length}</div>
-                    <div class="label">總記錄數</div>
-                </div>
-                <div class="stat-item">
-                    <div class="value">${arrivals}</div>
-                    <div class="label">抵港</div>
-                </div>
-                <div class="stat-item">
-                    <div class="value">${departures}</div>
-                    <div class="label">離港</div>
-                </div>
-            `;
-            
-            const stats = document.getElementById('stats');
-            stats.innerHTML = statsHtml;
-            stats.style.display = 'grid';
-        }
-        
-        
-        function createTable(data, searchTerm) {
-            const tableHead = document.getElementById('tableHead');
-            const tableBody = document.getElementById('tableBody');
-            const tableWrapper = document.getElementById('tableWrapper');
-            
-            tableHead.innerHTML = '';
-            tableBody.innerHTML = '';
-            
-            const columns = [
-                { key: 'vesselName', label: '船隻名稱' },
-                { key: 'type', label: '類型' },
-                { key: 'time', label: '時間' },
-                { key: 'location', label: '位置' },
-                { key: 'shipType', label: '船舶類型' },
-                { key: 'callSign', label: '呼號' },
-                { key: 'agentName', label: '代理' }
-            ];
-            const headerRow = document.createElement('tr');
-            columns.forEach(col => {
-                const th = document.createElement('th');
-                th.textContent = col.label;
-                headerRow.appendChild(th);
-            });
-            tableHead.appendChild(headerRow);
-            
-            data.forEach(record => {
-                const row = document.createElement('tr');
-                
-                columns.forEach(col => {
-                    const td = document.createElement('td');
-                    let value = record[col.key] || '-';
-                    
-                    if (col.key === 'type') {
-                        const badge = document.createElement('span');
-                        badge.className = `badge ${value === '抵港' ? 'badge-arrival' : 'badge-departure'}`;
-                        badge.textContent = value;
-                        td.appendChild(badge);
-                    } else {
-                        td.textContent = value;
-                        
-                        if (searchTerm && value.toString().toUpperCase().includes(searchTerm.toUpperCase())) {
-                            td.classList.add('highlight');
-                        }
-                    }
-                    
-                    row.appendChild(td);
-                });
-                
-                tableBody.appendChild(row);
-            });
-            
-            tableWrapper.classList.add('show');
-        }
-        
-        
-        function clearSearch() {
-            document.getElementById('vesselNameRealtime').value = '';
-            document.getElementById('vesselNameHistorical').value = '';
-            document.getElementById('dataTypeRealtime').value = 'both';
-            document.getElementById('dataTypeHistorical').value = 'both';
-            
-            const today = new Date().toISOString().split('T')[0];
-            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            
-            document.getElementById('startDateHistorical').value = yesterday;
-            document.getElementById('endDateHistorical').value = today;
-            
-            clearResults();
-        }
-        
-        function clearResults() {
-            currentData = [];
-            document.getElementById('tableWrapper').classList.remove('show');
-            document.getElementById('stats').style.display = 'none';
-            hideNoResults();
-            clearMessages();
-            clearLog();
-        }
-        
-        
-        function showLoading(text) {
-            document.getElementById('loading').classList.add('show');
-            document.getElementById('loadingText').textContent = text || '正在獲取資料...';
-            document.getElementById('tableWrapper').classList.remove('show');
-            document.getElementById('stats').style.display = 'none';
-            hideNoResults();
-        }
-        
-        function hideLoading() {
-            document.getElementById('loading').classList.remove('show');
-        }
-        
-        function showError(message) {
-            const el = document.getElementById('errorMessage');
-            el.textContent = message;
-            el.classList.add('show');
-        }
-        
-        function showSuccess(message) {
-            const el = document.getElementById('successMessage');
-            el.textContent = message;
-            el.classList.add('show');
-        }
-        
-        function clearMessages() {
-            document.querySelectorAll('.message').forEach(el => el.classList.remove('show'));
-        }
-        
-        function showNoResults() {
-            document.getElementById('noResults').classList.add('show');
-        }
-        
-        function hideNoResults() {
-            document.getElementById('noResults').classList.remove('show');
-        }
-    </script>
+      tableWrapper.classList.add("show");
+    }
+
+    function clearSearch() {
+      document.getElementById("vesselName").value = "";
+      document.getElementById("dataType").value = "both";
+      document.getElementById("useLast36h").checked = true;
+
+      const today = new Date().toISOString().split("T")[0];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      document.getElementById("startDate").value = yesterday;
+      document.getElementById("endDate").value = today;
+
+      syncDateEnabledState();
+      clearResults();
+    }
+  </script>
 </body>
 </html>
