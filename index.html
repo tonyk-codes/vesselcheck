@@ -25,16 +25,8 @@
       width: 100%;
     }
 
-    header {
-      background: #1a365d;
-      color: white;
-      padding: 16px 0;
-    }
-
-    header h1 {
-      font-size: 18px;
-      font-weight: 600;
-    }
+    header { background: #1a365d; color: white; padding: 16px 0; }
+    header h1 { font-size: 18px; font-weight: 600; }
 
     main { flex: 1; padding: 20px 0; }
 
@@ -63,10 +55,7 @@
       margin-bottom: 16px;
     }
 
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
+    .form-group { display: flex; flex-direction: column; }
 
     .form-group label {
       font-size: 12px;
@@ -172,12 +161,7 @@
       margin-top: 2px;
     }
 
-    .loading {
-      display: none;
-      text-align: center;
-      padding: 40px;
-    }
-
+    .loading { display: none; text-align: center; padding: 40px; }
     .loading.show { display: block; }
 
     .spinner {
@@ -192,10 +176,7 @@
 
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    .loading p {
-      font-size: 13px;
-      color: #718096;
-    }
+    .loading p { font-size: 13px; color: #718096; }
 
     .message {
       padding: 12px 16px;
@@ -243,19 +224,10 @@
     .log-panel .log-header { color: #b794f4; font-weight: bold; margin-top: 6px; margin-bottom: 4px; }
     .log-panel .log-summary { color: #68d391; font-weight: bold; margin-top: 8px; padding-top: 8px; border-top: 1px solid #4a5568; }
 
-    .table-wrapper {
-      overflow-x: auto;
-      display: none;
-    }
-
+    .table-wrapper { overflow-x: auto; display: none; }
     .table-wrapper.show { display: block; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
     thead { background: #edf2f7; }
 
     th {
@@ -289,24 +261,11 @@
     .badge-arrival { background: #c6f6d5; color: #276749; }
     .badge-departure { background: #fed7d7; color: #c53030; }
 
-    .no-results {
-      text-align: center;
-      padding: 40px;
-      display: none;
-    }
-
+    .no-results { text-align: center; padding: 40px; display: none; }
     .no-results.show { display: block; }
 
-    .no-results h3 {
-      font-size: 14px;
-      color: #4a5568;
-      margin-bottom: 8px;
-    }
-
-    .no-results p {
-      font-size: 12px;
-      color: #718096;
-    }
+    .no-results h3 { font-size: 14px; color: #4a5568; margin-bottom: 8px; }
+    .no-results p { font-size: 12px; color: #718096; }
 
     footer {
       background: #2d3748;
@@ -323,23 +282,11 @@
       flex-wrap: wrap;
     }
 
-    .footer-links {
-      font-size: 12px;
-      line-height: 1.8;
-    }
-
-    .footer-links a {
-      color: #90cdf4;
-      text-decoration: none;
-    }
-
+    .footer-links { font-size: 12px; line-height: 1.8; }
+    .footer-links a { color: #90cdf4; text-decoration: none; }
     .footer-links a:hover { text-decoration: underline; }
 
-    .footer-version {
-      font-size: 12px;
-      color: #718096;
-      white-space: nowrap;
-    }
+    .footer-version { font-size: 12px; color: #718096; white-space: nowrap; }
 
     @media (max-width: 768px) {
       .btn-group { flex-wrap: wrap; }
@@ -374,7 +321,7 @@
             </div>
 
             <div class="form-group">
-              <label for="startDate">最近 36 小時數據開始日期</label>
+              <label for="startDate">開始日期</label>
               <input type="date" id="startDate" />
             </div>
 
@@ -437,7 +384,7 @@
         <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML" target="_blank">過去三十六小時抵港的船隻</a><br />
         <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05505i.XML" target="_blank">過去三十六小時離港的船隻</a>
       </div>
-      <div class="footer-version">20260202.16</div>
+      <div class="footer-version">20260202.23</div>
     </div>
   </footer>
 
@@ -462,6 +409,15 @@
 
       const cb = document.getElementById("useLast36h");
       cb.addEventListener("change", syncDateEnabledState);
+
+      const startEl = document.getElementById("startDate");
+      startEl.addEventListener("change", function () {
+        if (document.getElementById("useLast36h").checked) return;
+        const endEl = document.getElementById("endDate");
+        endEl.focus();
+        if (typeof endEl.showPicker === "function") endEl.showPicker();
+      });
+
       syncDateEnabledState();
     });
 
@@ -566,6 +522,99 @@
       return { valid: true, days: daysDiff };
     }
 
+    function parseVesselDateTime(value) {
+      if (!value) return null;
+      const s = String(value).trim();
+      const m1 = s.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+      if (m1) {
+        const dd = Number(m1[1]);
+        const mon = m1[2].toUpperCase();
+        const yyyy = Number(m1[3]);
+        const hh = m1[4] !== undefined ? Number(m1[4]) : 0;
+        const mm = m1[5] !== undefined ? Number(m1[5]) : 0;
+        const ss = m1[6] !== undefined ? Number(m1[6]) : 0;
+        const map = { JAN:0, FEB:1, MAR:2, APR:3, MAY:4, JUN:5, JUL:6, AUG:7, SEP:8, OCT:9, NOV:10, DEC:11 };
+        const mo = map[mon];
+        if (mo === undefined) return null;
+        const d = new Date(yyyy, mo, dd, hh, mm, ss);
+        return Number.isNaN(d.getTime()) ? null : d;
+      }
+      const d2 = new Date(s);
+      return Number.isNaN(d2.getTime()) ? null : d2;
+    }
+
+    function parseDateOnlyFromVesselDate(value) {
+      const dt = parseVesselDateTime(value);
+      if (!dt) return null;
+      return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+    }
+
+    function filterBySelectedDateRange(data, startDateStr, endDateStr) {
+      const start = new Date(startDateStr);
+      const end = new Date(endDateStr);
+      start.setHours(0, 0, 0, 0);
+      end.setHours(0, 0, 0, 0);
+
+      return data.filter(item => {
+        const d = parseDateOnlyFromVesselDate(item.time ?? item.date ?? item["日期"]);
+        if (!d || Number.isNaN(d.getTime())) return false;
+        d.setHours(0, 0, 0, 0);
+        return d >= start && d <= end;
+      });
+    }
+
+    function sortByTimeAscending(data) {
+      return data.slice().sort((a, b) => {
+        const da = parseVesselDateTime(a.time);
+        const db = parseVesselDateTime(b.time);
+        const ta = da ? da.getTime() : Number.POSITIVE_INFINITY;
+        const tb = db ? db.getTime() : Number.POSITIVE_INFINITY;
+        if (ta !== tb) return ta - tb;
+        const va = (a.vesselName || "").toUpperCase();
+        const vb = (b.vesselName || "").toUpperCase();
+        if (va < vb) return -1;
+        if (va > vb) return 1;
+        return 0;
+      });
+    }
+
+    function floorToHalfHourHHMM(date) {
+      const d = new Date(date.getTime());
+      const mins = d.getMinutes();
+      d.setMinutes(mins < 30 ? 0 : 30, 0, 0);
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${hh}${mm}`;
+    }
+
+    function ymd(date) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    function ymdCompact(dateStr) {
+      return dateStr.replace(/-/g, "");
+    }
+
+    function recordKey(r) {
+      return `${(r.vesselName || "").toUpperCase()}|${r.type || ""}|${r.time || ""}|${r.location || ""}|${r.callSign || ""}`;
+    }
+
+    function dedupeRecords(records) {
+      const seen = new Set();
+      const out = [];
+      for (const r of records) {
+        const k = recordKey(r);
+        if (!seen.has(k)) {
+          seen.add(k);
+          out.push(r);
+        }
+      }
+      return out;
+    }
+
     async function performSearch() {
       clearMessages();
       clearResults();
@@ -622,7 +671,7 @@
 
       if (dataType === "both" || dataType === "arrival") {
         log("獲取抵港資料...", "info");
-        const arrivalData = await fetchXMLDataEnsured(CONFIG.arrivalUrl, "arrival");
+        const arrivalData = await fetchXMLDataEnsured(CONFIG.arrivalUrl, "arrival", false);
         arrivalCount = arrivalData.length;
         allData = allData.concat(arrivalData);
         log(`抵港: ${arrivalCount} 筆`, "success");
@@ -630,7 +679,7 @@
 
       if (dataType === "both" || dataType === "departure") {
         log("獲取離港資料...", "info");
-        const departureData = await fetchXMLDataEnsured(CONFIG.departureUrl, "departure");
+        const departureData = await fetchXMLDataEnsured(CONFIG.departureUrl, "departure", false);
         departureCount = departureData.length;
         allData = allData.concat(departureData);
         log(`離港: ${departureCount} 筆`, "success");
@@ -645,61 +694,11 @@
       return dedupeRecords(allData);
     }
 
-    function parseDateOnlyFromVesselDate(value) {
-      if (!value) return null;
-      const s = String(value).trim();
-      const first = s.split(/\s+/)[0];
-      const iso = first.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-      if (iso) return new Date(Number(iso[1]), Number(iso[2]) - 1, Number(iso[3]));
-      const m = first.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})$/);
-      if (!m) return null;
-      const dd = Number(m[1]);
-      const mon = m[2].toUpperCase();
-      const yyyy = Number(m[3]);
-      const map = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
-      const mm = map[mon];
-      if (mm === undefined || !Number.isFinite(dd) || !Number.isFinite(yyyy)) return null;
-      return new Date(yyyy, mm, dd);
-    }
-
-    function filterBySelectedDateRange(data, startDateStr, endDateStr) {
-      const start = new Date(startDateStr);
-      const end = new Date(endDateStr);
-      start.setHours(0, 0, 0, 0);
-      end.setHours(0, 0, 0, 0);
-
-      return data.filter(item => {
-        const d = parseDateOnlyFromVesselDate(item.time ?? item.date ?? item["日期"]);
-        if (!d || Number.isNaN(d.getTime())) return false;
-        d.setHours(0, 0, 0, 0);
-        return d >= start && d <= end;
-      });
-    }
-
-    function getLatestTimeSlotForToday() {
-      const now = new Date();
-      const h = now.getHours();
-      if (h >= 16) return "1600";
-      if (h >= 8) return "0800";
-      if (h >= 0) return "0000";
-      return "0000";
-    }
-
-    function ymd(date) {
-      const yyyy = date.getFullYear();
-      const mm = String(date.getMonth() + 1).padStart(2, "0");
-      const dd = String(date.getDate()).padStart(2, "0");
-      return `${yyyy}-${mm}-${dd}`;
-    }
-
-    function ymdCompact(dateStr) {
-      return dateStr.replace(/-/g, "");
-    }
-
     async function fetchHistoricalDataRangeOptimized(startDate, endDate, dataType = "both") {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      const todayStr = new Date().toISOString().split("T")[0];
+      const today = new Date();
+      const todayStr = ymd(today);
 
       const all = [];
       const seen = new Set();
@@ -709,23 +708,16 @@
 
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         dayIndex += 1;
-
         const dayStr = ymd(d);
-        const snap = new Date(d);
-        snap.setDate(snap.getDate() + 1);
 
-        let snapDateStr = ymd(snap);
-        let snapTime = "0000";
+        let timeHHMM = "2330";
+        if (dayStr === todayStr) timeHHMM = floorToHalfHourHHMM(new Date());
+        if (dayStr > todayStr) timeHHMM = floorToHalfHourHHMM(new Date());
 
-        if (snapDateStr > todayStr) {
-          snapDateStr = todayStr;
-          snapTime = getLatestTimeSlotForToday();
-        }
-
-        const timeParam = `${ymdCompact(snapDateStr)}-${snapTime}`;
+        const timeParam = `${ymdCompact(dayStr)}-${timeHHMM}`;
 
         showLoading(`正在獲取 ${dayStr} 的資料 (${dayIndex}/${totalDays})...`);
-        log(`[${dayIndex}/${totalDays}] ${dayStr} → 取樣點 ${snapDateStr} ${snapTime}`, "info");
+        log(`[${dayIndex}/${totalDays}] ${dayStr} → 取樣點 ${timeHHMM}`, "info");
 
         let dayArrivals = 0;
         let dayDepartures = 0;
@@ -763,34 +755,17 @@
       return all;
     }
 
-    function recordKey(r) {
-      return `${(r.vesselName || "").toUpperCase()}|${r.type || ""}|${r.time || ""}|${r.location || ""}|${r.callSign || ""}`;
-    }
-
-    function dedupeRecords(records) {
-      const seen = new Set();
-      const out = [];
-      for (const r of records) {
-        const k = recordKey(r);
-        if (!seen.has(k)) {
-          seen.add(k);
-          out.push(r);
-        }
-      }
-      return out;
-    }
-
     async function fetchHistoricalDataEnsured(rawUrl, timeParam, type) {
       const historicalUrl = `${CONFIG.historicalApiBase}?url=${encodeURIComponent(rawUrl)}&time=${timeParam}`;
       const data = await fetchXMLDataEnsured(historicalUrl, type, true);
       return data;
     }
 
-    async function fetchXMLDataEnsured(url, type, isHistorical = false) {
+    async function fetchXMLDataEnsured(url, type, isHistorical) {
       let attempt = 0;
       while (attempt < CONFIG.maxFetchAttempts) {
         attempt += 1;
-        const label = isHistorical ? `歷史API` : `即時XML`;
+        const label = isHistorical ? "歷史API" : "即時XML";
         log(`${label} 連線中... (第 ${attempt}/${CONFIG.maxFetchAttempts} 次)`, "info");
 
         const data = await fetchXMLDataOnce(url, type);
@@ -878,14 +853,14 @@
       if (type === "arrival") {
         time = getVal(["ARRIVAL_TIME", "Arrival_Time", "arrival_time", "ArrivalTime"]);
       } else {
-        time = getVal(["ATD_TIME", "Atd_Time", "atd_time", "AtdTime", "DEPARTURE_TIME"]);
+        time = getVal(["ATD_TIME", "Atd_Time", "atd_time", "AtdTime", "DEPARTURE_TIME", "Departure_Time", "departure_time", "Dep_Time", "DEP_TIME"]);
       }
 
       let location = "";
       if (type === "arrival") {
         location = getVal(["CURRENT_LOCATION", "Current_Location", "current_location", "ANCHORAGE", "Anchorage"]);
       } else {
-        location = getVal(["LAST_BERTH", "Last_Berth", "last_berth", "LastBerth"]);
+        location = getVal(["LAST_BERTH", "Last_Berth", "last_berth", "LastBerth", "BERTH", "Berth", "DEPARTURE_BERTH", "Departure_Berth"]);
       }
 
       return {
@@ -902,17 +877,20 @@
 
     function displayResults(data, searchTerm) {
       hideLoading();
-      currentData = data;
+      const normalized = Array.isArray(data) ? data : [];
+      const deduped = dedupeRecords(normalized);
+      const sorted = sortByTimeAscending(deduped);
+      currentData = sorted;
 
-      if (!Array.isArray(data) || data.length === 0) {
+      if (sorted.length === 0) {
         showNoResults();
         return;
       }
 
       hideNoResults();
-      showSuccess(`找到 ${data.length} 筆記錄`);
-      displayStats(data);
-      createTable(data, searchTerm);
+      showSuccess(`找到 ${sorted.length} 筆記錄`);
+      displayStats(sorted);
+      createTable(sorted, searchTerm);
     }
 
     function displayStats(data) {
