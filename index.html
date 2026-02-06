@@ -384,7 +384,7 @@
         <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML" target="_blank">過去三十六小時抵港的船隻</a><br />
         <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05505i.XML" target="_blank">過去三十六小時離港的船隻</a>
       </div>
-      <div class="footer-version">20260202.23</div>
+      <div class="footer-version">20260206.1</div>
     </div>
   </footer>
 
@@ -671,7 +671,7 @@
 
       if (dataType === "both" || dataType === "arrival") {
         log("獲取抵港資料...", "info");
-        const arrivalData = await fetchXMLDataEnsured(CONFIG.arrivalUrl, "arrival", false);
+        const arrivalData = await fetchXMLDataEnsured(CONFIG.arrivalUrl, "arrival", false, 3);
         arrivalCount = arrivalData.length;
         allData = allData.concat(arrivalData);
         log(`抵港: ${arrivalCount} 筆`, "success");
@@ -679,7 +679,7 @@
 
       if (dataType === "both" || dataType === "departure") {
         log("獲取離港資料...", "info");
-        const departureData = await fetchXMLDataEnsured(CONFIG.departureUrl, "departure", false);
+        const departureData = await fetchXMLDataEnsured(CONFIG.departureUrl, "departure", false, 3);
         departureCount = departureData.length;
         allData = allData.concat(departureData);
         log(`離港: ${departureCount} 筆`, "success");
@@ -761,12 +761,13 @@
       return data;
     }
 
-    async function fetchXMLDataEnsured(url, type, isHistorical) {
+    async function fetchXMLDataEnsured(url, type, isHistorical, maxAttempts = null) {
+      const attempts = maxAttempts || CONFIG.maxFetchAttempts;
       let attempt = 0;
-      while (attempt < CONFIG.maxFetchAttempts) {
+      while (attempt < attempts) {
         attempt += 1;
         const label = isHistorical ? "歷史API" : "即時XML";
-        log(`${label} 連線中... (第 ${attempt}/${CONFIG.maxFetchAttempts} 次)`, "info");
+        log(`${label} 連線中... (第 ${attempt}/${attempts} 次)`, "info");
 
         const data = await fetchXMLDataOnce(url, type);
         if (Array.isArray(data) && data.length > 0) return data;
@@ -779,9 +780,15 @@
     }
 
     async function fetchXMLDataOnce(url, type) {
-      const direct = await tryFetchAndParse(url, type);
-      if (direct.length > 0) return direct;
+      // Skip direct fetch for Marine Department URLs - they block CORS
+      const isMardepUrl = url.includes('mardep.gov.hk') && !url.includes('historical-archive');
+      
+      if (!isMardepUrl) {
+        const direct = await tryFetchAndParse(url, type);
+        if (direct.length > 0) return direct;
+      }
 
+      // Use CORS proxies immediately for direct Marine Department URLs
       for (let i = 0; i < CONFIG.corsProxies.length; i++) {
         const proxyUrl = CONFIG.corsProxies[i] + encodeURIComponent(url);
         const viaProxy = await tryFetchAndParse(proxyUrl, type);
