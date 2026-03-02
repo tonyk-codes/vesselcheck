@@ -381,8 +381,8 @@
   <footer>
     <div class="container">
       <div class="footer-links">
-        <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML" target="_blank">過去三十六小時抵港的船隻</a><br />
-        <a href="https://www.mardep.gov.hk/e_files/en/opendata/RP05505i.XML" target="_blank">過去三十六小時離港的船隻</a>
+        <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-non-convention-vessel-arrivals-and-departures/resource/d6030f0a-83ea-4857-9a8b-04672ca375b0" target="_blank">過去三十六小時抵港的船隻</a><br />
+        <a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures/resource/7cafe2bc-066f-4665-b527-d4b792f96e4a" target="_blank">過去三十六小時離港的船隻</a>
       </div>
       <div class="footer-version">20260206.1</div>
     </div>
@@ -671,15 +671,20 @@
 
       if (dataType === "both" || dataType === "arrival") {
         log("獲取抵港資料...", "info");
-        const arrivalData = await fetchXMLDataEnsured(CONFIG.arrivalUrl, "arrival", false, 3);
+        const arrivalData = await fetchXMLDataEnsured(CONFIG.arrivalUrl, "arrival", false, 5);
         arrivalCount = arrivalData.length;
         allData = allData.concat(arrivalData);
         log(`抵港: ${arrivalCount} 筆`, "success");
       }
 
       if (dataType === "both" || dataType === "departure") {
+        // Delay before second fetch to avoid CORS proxy rate-limiting
+        if (dataType === "both") {
+          log("等待後再獲取離港資料...", "info");
+          await sleep(1500);
+        }
         log("獲取離港資料...", "info");
-        const departureData = await fetchXMLDataEnsured(CONFIG.departureUrl, "departure", false, 3);
+        const departureData = await fetchXMLDataEnsured(CONFIG.departureUrl, "departure", false, 5);
         departureCount = departureData.length;
         allData = allData.concat(departureData);
         log(`離港: ${departureCount} 筆`, "success");
@@ -702,6 +707,7 @@
 
       const all = [];
       const seen = new Set();
+      let failedDays = 0;
 
       const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
       let dayIndex = 0;
@@ -722,37 +728,59 @@
         let dayArrivals = 0;
         let dayDepartures = 0;
 
-        if (dataType === "both" || dataType === "arrival") {
-          const a = await fetchHistoricalDataEnsured(CONFIG.arrivalUrl, timeParam, "arrival");
-          for (const item of a) {
+        // Fetch arrival and departure in parallel when both are needed
+        const needArrival = dataType === "both" || dataType === "arrival";
+        const needDeparture = dataType === "both" || dataType === "departure";
+
+        const arrivalPromise = needArrival
+          ? fetchHistoricalDataSafe(CONFIG.arrivalUrl, timeParam, "arrival", dayStr)
+          : Promise.resolve([]);
+        const departurePromise = needDeparture
+          ? fetchHistoricalDataSafe(CONFIG.departureUrl, timeParam, "departure", dayStr)
+          : Promise.resolve([]);
+
+        const [arrivalResult, departureResult] = await Promise.all([arrivalPromise, departurePromise]);
+
+        if (needArrival) {
+          for (const item of arrivalResult) {
             const k = recordKey(item);
-            if (!seen.has(k)) {
-              seen.add(k);
-              all.push(item);
-              dayArrivals += 1;
-            }
+            if (!seen.has(k)) { seen.add(k); all.push(item); dayArrivals += 1; }
+          }
+        }
+        if (needDeparture) {
+          for (const item of departureResult) {
+            const k = recordKey(item);
+            if (!seen.has(k)) { seen.add(k); all.push(item); dayDepartures += 1; }
           }
         }
 
-        if (dataType === "both" || dataType === "departure") {
-          const b = await fetchHistoricalDataEnsured(CONFIG.departureUrl, timeParam, "departure");
-          for (const item of b) {
-            const k = recordKey(item);
-            if (!seen.has(k)) {
-              seen.add(k);
-              all.push(item);
-              dayDepartures += 1;
-            }
-          }
+        if (needArrival && arrivalResult.length === 0 && needDeparture && departureResult.length === 0) {
+          failedDays += 1;
         }
 
         const parts = [];
-        if (dataType === "both" || dataType === "arrival") parts.push(`抵港 ${dayArrivals}`);
-        if (dataType === "both" || dataType === "departure") parts.push(`離港 ${dayDepartures}`);
+        if (needArrival) parts.push(`抵港 ${dayArrivals}`);
+        if (needDeparture) parts.push(`離港 ${dayDepartures}`);
         log(`  → ${parts.join(", ")}`, "success");
+
+        // Delay between days to avoid overwhelming the API server
+        if (dayIndex < totalDays) await sleep(800);
+      }
+
+      if (failedDays > 0) {
+        log(`注意：${failedDays} 天的資料未能取得`, "warn");
       }
 
       return all;
+    }
+
+    async function fetchHistoricalDataSafe(rawUrl, timeParam, type, dayStr) {
+      try {
+        return await fetchHistoricalDataEnsured(rawUrl, timeParam, type);
+      } catch (e) {
+        log(`${dayStr} ${type === "arrival" ? "抵港" : "離港"} 資料取得失敗: ${e.message}`, "error");
+        return [];
+      }
     }
 
     async function fetchHistoricalDataEnsured(rawUrl, timeParam, type) {
@@ -769,17 +797,18 @@
         const label = isHistorical ? "歷史API" : "即時XML";
         log(`${label} 連線中... (第 ${attempt}/${attempts} 次)`, "info");
 
-        const data = await fetchXMLDataOnce(url, type);
+        const data = await fetchXMLDataOnce(url, type, attempt);
         if (Array.isArray(data) && data.length > 0) return data;
 
-        const delay = CONFIG.retryBaseDelayMs * attempt;
+        // Use longer delays to avoid CORS proxy rate-limiting (1s, 2s, 3s...)
+        const delay = Math.max(1000, CONFIG.retryBaseDelayMs * attempt * 4);
         log(`未取到資料，${delay}ms 後重試...`, "warn");
         await sleep(delay);
       }
       throw new Error("無法從資料來源取得任何資料（已多次重試）");
     }
 
-    async function fetchXMLDataOnce(url, type) {
+    async function fetchXMLDataOnce(url, type, attemptNumber) {
       // Skip direct fetch for Marine Department URLs - they block CORS
       const isMardepUrl = url.includes('mardep.gov.hk') && !url.includes('historical-archive');
       
@@ -788,11 +817,15 @@
         if (direct.length > 0) return direct;
       }
 
-      // Use CORS proxies immediately for direct Marine Department URLs
-      for (let i = 0; i < CONFIG.corsProxies.length; i++) {
+      // Rotate which CORS proxy is tried first on each attempt to spread load
+      const startIdx = ((attemptNumber || 1) - 1) % CONFIG.corsProxies.length;
+      for (let j = 0; j < CONFIG.corsProxies.length; j++) {
+        const i = (startIdx + j) % CONFIG.corsProxies.length;
         const proxyUrl = CONFIG.corsProxies[i] + encodeURIComponent(url);
         const viaProxy = await tryFetchAndParse(proxyUrl, type);
         if (viaProxy.length > 0) return viaProxy;
+        // Small delay between proxy attempts to avoid rapid-fire requests
+        if (j < CONFIG.corsProxies.length - 1) await sleep(500);
       }
       return [];
     }
