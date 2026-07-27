@@ -14,15 +14,14 @@
   <a class="skip-link" href="#query">跳至查詢</a>
   <header class="site-header">
     <div class="shell header-inner">
-      <div class="brand-mark" aria-hidden="true">港</div>
-      <div><p class="eyebrow">MARINE TRAFFIC DATA</p><h1>海事處船隻進出港資料查詢</h1></div>
-      <div class="source-status"><span></span>公開資料來源</div>
+      <div><h1>海事處船隻進出港資料查詢</h1></div>
+      <div class="source-status"><span></span></div>
     </div>
   </header>
 
   <main class="shell" id="query">
     <section class="panel query-panel" aria-labelledby="query-title">
-      <div class="panel-heading"><div><p class="eyebrow">QUERY</p><h2 id="query-title">查詢選項</h2></div><p id="modeHint">可查詢最近 36 小時，或取消勾選查詢最多 20 天的歷史資料。</p></div>
+      <div class="panel-heading"><div><h2 id="query-title">查詢選項</h2></div><p id="modeHint">可查詢最近 36 小時，或取消勾選查詢最多 20 天的歷史資料。</p></div>
       <div class="panel-body">
         <fieldset class="mode-switcher"><legend>資料時段</legend>
           <label class="mode-option"><input type="checkbox" id="useLast36h" checked><span class="check-ui"></span><span><strong>最近 36 小時數據</strong><small>已抵港及已離港紀錄</small></span></label>
@@ -30,7 +29,7 @@
         </fieldset>
 
         <div class="form-grid">
-          <label class="field"><span>船隻名稱 <em>可選</em></span><input id="vesselName" type="search" autocomplete="off" placeholder="例如：EVER GIVEN"></label>
+          <label class="field"><span>船隻名稱 <em>可選</em></span><input id="vesselName" type="search" autocomplete="off"></label>
           <label class="field"><span>開始日期</span><input id="startDate" type="date"></label>
           <label class="field"><span>結束日期</span><input id="endDate" type="date"></label>
           <label class="field"><span>資料類型</span><select id="dataType"><option value="both">抵港及離港</option><option value="arrival">僅抵港</option><option value="departure">僅離港</option></select></label>
@@ -40,7 +39,7 @@
     </section>
 
     <section class="panel results-panel" aria-labelledby="results-title">
-      <div class="panel-heading results-heading"><div><p class="eyebrow">RESULTS</p><h2 id="results-title">搜尋結果</h2></div><div id="resultMeta" class="result-meta" aria-live="polite">尚未搜尋</div></div>
+      <div class="panel-heading results-heading"><div><h2 id="results-title">搜尋結果</h2></div><div id="resultMeta" class="result-meta" aria-live="polite">尚未搜尋</div></div>
       <div class="panel-body">
         <div class="message error" id="errorMessage" role="alert"></div>
         <div class="message success" id="successMessage" role="status"></div>
@@ -53,6 +52,6 @@
     </section>
   </main>
 
-  <footer><div class="shell footer-inner"><div><strong>資料來源</strong><nav><a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures" target="_blank" rel="noopener">進出港公開資料</a><a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-traffic-management-system-report" target="_blank" rel="noopener">船舶交通管理系統報告</a></nav></div><p>資料以香港時間顯示<br><span>版本 2026.07.27</span></p></div></footer>
+  <footer><div class="shell footer-inner"><div><strong>資料來源</strong><nav><a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-arrivals-and-departures" target="_blank" rel="noopener">進出港公開資料</a><a href="https://data.gov.hk/tc-data/dataset/hk-md-mardep-vessel-traffic-management-system-report" target="_blank" rel="noopener">船舶交通管理系統報告</a></nav></div><p><span>版本 2026.07.27</span></p></div></footer>
 </body>
 </html>
