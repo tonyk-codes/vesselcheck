@@ -7,8 +7,16 @@ const CONFIG={
   futureArrivalUrl:"https://www.mardep.gov.hk/e_files/en/pub_services/RP04005.XML",
   futureDepartureUrl:"https://www.mardep.gov.hk/e_files/en/pub_services/RP04505.XML",
   historicalApiBase:"https://app.data.gov.hk/v1/historical-archive/get-file",
+  historicalVersionListBase:"https://app.data.gov.hk/v1/historical-archive/list-file-versions",
   corsProxies:["https://api.allorigins.win/raw?url=","https://corsproxy.io/?"],
-  maxDays:20,maxFetchAttempts:10,retryBaseDelayMs:250,cachePrefix:"mardep-v3:"
+  maxDays:20,
+  maxFetchAttempts:4,
+  retryBaseDelayMs:75,
+  historicalTimeoutMs:5000,
+  historicalVersionAttempts:2,
+  historicalFileAttempts:2,
+  historicalDayDelayMs:150,
+  cachePrefix:"vesselcheck-v6:"
 };
 let currentData=[];
 const $=id=>document.getElementById(id);
@@ -35,18 +43,271 @@ function dedupeRecords(records){const seen=new Map;for(const r of records){const
 function callKey(v){return String(v||"").trim().toUpperCase().replace(/\s+/g,"")}
 function portMap(rows){const map=new Map;for(const r of rows)if(callKey(r.callSign)&&r.adjacentPort)map.set(callKey(r.callSign),r.adjacentPort);return map}
 async function performSearch(){clearResults();const vesselName=$("vesselName").value.trim().toUpperCase(),type=$("dataType").value;try{let data;if($("useFuture").checked){showLoading("正在獲取未來船期...");data=await searchCurrentMode("future",vesselName,type)}else if($("useLast36h").checked){showLoading("正在獲取最近 36 小時船隻資料...");data=await searchCurrentMode("recent",vesselName,type)}else{const start=$("startDate").value,end=$("endDate").value,v=validateDateRange(start,end);if(!v.valid){showMessage("errorMessage",v.error);return}showLoading("正在獲取歷史資料...");log(`日期範圍：${start} 至 ${end}（${v.days} 天）`);const all=await fetchHistoricalDataRangeOptimized(start,end,type);data=filterBySelectedDateRange(all,start,end);if(vesselName)data=data.filter(x=>x.vesselName?.toUpperCase().includes(vesselName))}displayResults(data,vesselName)}catch(e){log(`錯誤：${e.message}`,"error");showMessage("errorMessage",`搜尋時發生錯誤：${e.message}`);$("resultMeta").textContent="擷取失敗";hideLoading()}}
-async function searchCurrentMode(mode,name,type){let all=[],arrivalCount=0,departureCount=0;const isFuture=mode==="future",aUrl=isFuture?CONFIG.futureArrivalUrl:CONFIG.arrivalUrl,dUrl=isFuture?CONFIG.futureDepartureUrl:CONFIG.departureUrl;if(type==="both"||type==="arrival"){log("獲取抵港資料...");const rows=await fetchXMLDataEnsured(aUrl,"arrival",false,5);arrivalCount=rows.length;all.push(...rows);log(`抵港：${rows.length} 筆`,"success")}if(type==="both"||type==="departure"){if(type==="both"){log("等待後再獲取離港資料...");await sleep(1500)}log("獲取離港資料...");const rows=await fetchXMLDataEnsured(dUrl,"departure",false,5);departureCount=rows.length;all.push(...rows);log(`離港：${rows.length} 筆`,"success")}if(!isFuture){$("loadingText").textContent="正在補充上一靠港／下一靠港...";await attachCurrentPorts(all,type)}if(name)all=all.filter(x=>x.vesselName?.toUpperCase().includes(name));log(`完成：共 ${all.length} 筆記錄（抵港 ${arrivalCount}，離港 ${departureCount}）`,"success");return dedupeRecords(all)}
+async function searchCurrentMode(mode,name,type){let all=[],arrivalCount=0,departureCount=0;const isFuture=mode==="future",aUrl=isFuture?CONFIG.futureArrivalUrl:CONFIG.arrivalUrl,dUrl=isFuture?CONFIG.futureDepartureUrl:CONFIG.departureUrl;if(type==="both"||type==="arrival"){log("獲取抵港資料...");const rows=await fetchXMLDataEnsured(aUrl,"arrival",false,4);arrivalCount=rows.length;all.push(...rows);log(`抵港：${rows.length} 筆`,"success")}if(type==="both"||type==="departure"){if(type==="both"){log("等待後再獲取離港資料...");await sleep(300)}log("獲取離港資料...");const rows=await fetchXMLDataEnsured(dUrl,"departure",false,4);departureCount=rows.length;all.push(...rows);log(`離港：${rows.length} 筆`,"success")}if(!isFuture){$("loadingText").textContent="正在補充上一靠港／下一靠港...";await attachCurrentPorts(all,type)}if(name)all=all.filter(x=>x.vesselName?.toUpperCase().includes(name));log(`完成：共 ${all.length} 筆記錄（抵港 ${arrivalCount}，離港 ${departureCount}）`,"success");return dedupeRecords(all)}
 async function attachCurrentPorts(rows,type){const jobs=[];if(type==="both"||type==="arrival")jobs.push(fetchXMLDataEnsured(CONFIG.arrivalReportUrl,"arrival",false,5).catch(e=>{log(`抵港靠港資料未能取得：${e.message}`,"warn");return[]}));if(type==="both"||type==="departure")jobs.push(fetchXMLDataEnsured(CONFIG.departureReportUrl,"departure",false,5).catch(e=>{log(`離港靠港資料未能取得：${e.message}`,"warn");return[]}));const maps=(await Promise.all(jobs)).map(portMap),combined=new Map;maps.forEach(m=>m.forEach((v,k)=>combined.set(k,v)));rows.forEach(r=>r.adjacentPort=combined.get(callKey(r.callSign))||r.adjacentPort||"")}
-async function fetchHistoricalDataRangeOptimized(startDate,endDate,dataType="both"){const start=new Date(startDate),end=new Date(endDate),todayStr=ymd(new Date()),all=[],seen=new Set(),total=Math.ceil((end-start)/86400000)+1;let index=0,failed=0;for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){index++;const dayStr=ymd(d),hhmm=dayStr>=todayStr?floorToHalfHourHHMM(new Date()):"2330",timeParam=`${dayStr.replaceAll("-","")}-${hhmm}`;showLoading(`正在獲取 ${dayStr} 的資料（${index}/${total}）...`);$("progressBar").style.width=`${Math.round(index/total*100)}%`;log(`[${index}/${total}] ${dayStr} → 取樣點 ${hhmm}`);const needA=dataType==="both"||dataType==="arrival",needD=dataType==="both"||dataType==="departure";const [a,dpt]=await Promise.all([needA?fetchHistoricalDataSafe(CONFIG.arrivalUrl,timeParam,"arrival",dayStr):[],needD?fetchHistoricalDataSafe(CONFIG.departureUrl,timeParam,"departure",dayStr):[]]);if(needA&&needD&&!a.length&&!dpt.length)failed++;for(const item of [...a,...dpt]){const k=recordKey(item);if(!seen.has(k)){seen.add(k);all.push(item)}}await attachHistoricalPorts(all.filter(r=>{const dt=parseVesselDateTime(r.time);return dt&&ymd(dt)===dayStr}),timeParam,dataType);log(`→ 抵港 ${a.length}，離港 ${dpt.length}`,"success");if(index<total)await sleep(800)}if(failed)log(`注意：${failed} 天的資料未能取得`,"warn");return all}
-async function attachHistoricalPorts(dayRows,timeParam,type){const jobs=[];if(type==="both"||type==="arrival")jobs.push(fetchHistoricalDataSafe(CONFIG.arrivalReportUrl,timeParam,"arrival","靠港").then(portMap));if(type==="both"||type==="departure")jobs.push(fetchHistoricalDataSafe(CONFIG.departureReportUrl,timeParam,"departure","靠港").then(portMap));const combined=new Map;(await Promise.all(jobs)).forEach(m=>m.forEach((v,k)=>combined.set(k,v)));dayRows.forEach(r=>r.adjacentPort=combined.get(callKey(r.callSign))||r.adjacentPort||"")}
-async function fetchHistoricalDataSafe(rawUrl,timeParam,type,day){try{return await fetchHistoricalDataEnsured(rawUrl,timeParam,type)}catch(e){log(`${day} ${type==="arrival"?"抵港":"離港"}資料取得失敗：${e.message}`,"error");return[]}}
-async function fetchHistoricalDataEnsured(rawUrl,timeParam,type){const url=`${CONFIG.historicalApiBase}?url=${encodeURIComponent(rawUrl)}&time=${timeParam}`;return fetchXMLDataEnsured(url,type,true)}
-function cacheKey(url,type){let h=2166136261;for(const c of url){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return`${CONFIG.cachePrefix}${type}:${h>>>0}`}
+async function fetchHistoricalDataRangeOptimized(startDate,endDate,dataType="both"){
+  const start=new Date(`${startDate}T00:00:00`),end=new Date(`${endDate}T00:00:00`);
+  const all=[],seen=new Map();
+  const total=Math.round((end-start)/86400000)+1;
+  let index=0,completeDays=0,partialDays=0,failedDays=0;
+
+  for(let d=new Date(start);d<=end;d.setDate(d.getDate()+1)){
+    index++;
+    const targetDate=ymd(d);
+    const archiveDate=addDateDays(targetDate,1);
+    const needArrival=dataType==="both"||dataType==="arrival";
+    const needDeparture=dataType==="both"||dataType==="departure";
+
+    showLoading(`正在獲取 ${targetDate} 的歷史資料（${index}/${total}）...`);
+    $("progressBar").style.width=`${Math.max(8,Math.round((index-1)/total*100))}%`;
+    log(`▶ [${index}/${total}] 目標日期 ${targetDate}；查詢 ${archiveDate} 的可用歷史版本。`,"info");
+
+    // Movement files are independent and can have different available timestamps.
+    const [arrivalMovement,departureMovement]=await Promise.all([
+      needArrival?fetchHistoricalMovementDay(targetDate,archiveDate,"arrival"):Promise.resolve(notRequestedResult()),
+      needDeparture?fetchHistoricalMovementDay(targetDate,archiveDate,"departure"):Promise.resolve(notRequestedResult())
+    ]);
+
+    logHistoricalMovementResult(targetDate,"arrival",arrivalMovement,needArrival);
+    logHistoricalMovementResult(targetDate,"departure",departureMovement,needDeparture);
+
+    const dayArrivals=arrivalMovement.ok?arrivalMovement.records:[];
+    const dayDepartures=departureMovement.ok?departureMovement.records:[];
+    log(`${targetDate} 移動記錄完成：抵港 ${dayArrivals.length} 筆，離港 ${dayDepartures.length} 筆。`,dayArrivals.length||dayDepartures.length?"success":"warn");
+
+    // Report timestamps are discovered from list-file-versions. No minute is guessed.
+    const reportJobs=[];
+    if(dayArrivals.length){
+      reportJobs.push(fetchHistoricalPortDay(targetDate,archiveDate,"arrival")
+        .then(result=>({type:"arrival",result})));
+    }
+    if(dayDepartures.length){
+      reportJobs.push(fetchHistoricalPortDay(targetDate,archiveDate,"departure")
+        .then(result=>({type:"departure",result})));
+    }
+    const reportResults=await Promise.all(reportJobs);
+    for(const {type,result} of reportResults){
+      const label=type==="arrival"?"抵港上一靠港":"離港下一靠港";
+      if(result.ok){
+        const rows=type==="arrival"?dayArrivals:dayDepartures;
+        const matched=applyHistoricalPorts(rows,result.records);
+        log(`${targetDate} ${label}：版本 ${result.timestamp}，報告 ${result.records.length} 筆，CALL_SIGN 配對 ${matched} 筆。`,"success");
+      }else{
+        log(`${targetDate} ${label}：未能取得報告，保留移動記錄並顯示「-」。`,"warn");
+      }
+    }
+
+    for(const record of [...dayArrivals,...dayDepartures]){
+      const key=recordKey(record);
+      if(!seen.has(key)){seen.set(key,record);all.push(record)}
+      else if(!seen.get(key).adjacentPort&&record.adjacentPort)seen.get(key).adjacentPort=record.adjacentPort;
+    }
+
+    const requested=[needArrival?arrivalMovement:null,needDeparture?departureMovement:null].filter(Boolean);
+    if(requested.every(result=>!result.ok))failedDays++;
+    else if(requested.some(result=>!result.ok))partialDays++;
+    else completeDays++;
+
+    log(`✓ ${targetDate} 完成：顯示抵港 ${dayArrivals.length} 筆、離港 ${dayDepartures.length} 筆。`,"success");
+    $("progressBar").style.width=`${Math.round(index/total*100)}%`;
+    if(index<total)await sleep(CONFIG.historicalDayDelayMs);
+  }
+
+  log(`歷史查詢摘要：完整 ${completeDays} 天，部分 ${partialDays} 天，失敗 ${failedDays} 天。`,failedDays?"warn":"success");
+  return all;
+}
+function addDateDays(dateString,amount){
+  const [year,month,day]=dateString.split("-").map(Number);
+  return new Date(Date.UTC(year,month-1,day+amount)).toISOString().slice(0,10);
+}
+function compactDate(dateString){return dateString.replaceAll("-","")}
+function eventDay(value){const d=parseVesselDateTime(value);return d?ymd(d):""}
+function notRequestedResult(){return{ok:true,status:"not-requested",records:[],timestamp:null,source:"not-requested"}}
+function historicalSource(type,category){
+  if(category==="movement")return type==="arrival"?CONFIG.arrivalUrl:CONFIG.departureUrl;
+  return type==="arrival"?CONFIG.arrivalReportUrl:CONFIG.departureReportUrl;
+}
+function historicalTypeName(type){return type==="arrival"?"抵港":"離港"}
+function versionListUrl(sourceUrl,dateString){
+  const date=compactDate(dateString);
+  return`${CONFIG.historicalVersionListBase}?url=${encodeURIComponent(sourceUrl)}&start=${date}&end=${date}`;
+}
+function historicalFileUrl(sourceUrl,timestamp){
+  return`${CONFIG.historicalApiBase}?url=${encodeURIComponent(sourceUrl)}&time=${encodeURIComponent(timestamp)}`;
+}
+function chooseMovementTimestamp(versionData,archiveDate){
+  const prefix=`${compactDate(archiveDate)}-`;
+  const timestamps=Array.isArray(versionData?.timestamps)?versionData.timestamps:[];
+  const valid=timestamps.filter(value=>typeof value==="string"&&/^\d{8}-\d{4}$/.test(value)&&value.startsWith(prefix)).sort();
+  if(!valid.length)return null;
+  const early=valid.filter(value=>{const hhmm=value.slice(-4);return hhmm>="0000"&&hhmm<="1200"});
+  // Prefer the third actual early version; otherwise second, first, then earliest actual version.
+  return early[2]||early[1]||early[0]||valid[0];
+}
+function chooseReportTimestamp(versionData,archiveDate){
+  const expectedPrefix=`${compactDate(archiveDate)}-`;
+  const preferred=versionData?.["latest-doc-date-before-start-date"];
+  if(typeof preferred==="string"&&/^\d{8}-\d{4}$/.test(preferred)&&preferred.startsWith(expectedPrefix))return preferred;
+  const latestFile=versionData?.["latest-file-before-start-date"]?.timestamp;
+  if(typeof latestFile==="string"&&/^\d{8}-\d{4}$/.test(latestFile)&&latestFile.startsWith(expectedPrefix))return latestFile;
+  const timestamps=Array.isArray(versionData?.timestamps)?versionData.timestamps.filter(value=>typeof value==="string"&&value.startsWith(expectedPrefix)).sort():[];
+  return timestamps.at(-1)||null;
+}
+async function fetchHistoricalMovementDay(targetDate,archiveDate,type){
+  const sourceUrl=historicalSource(type,"movement");
+  const label=`${targetDate} ${historicalTypeName(type)}移動資料`;
+  const versions=await fetchVersionList(sourceUrl,archiveDate,label);
+  if(!versions.ok)return failedHistoricalResult();
+  const timestamp=chooseMovementTimestamp(versions.data,archiveDate);
+  if(!timestamp){log(`${label}：版本清單沒有 ${archiveDate} 的可用時間。`,"error");return failedHistoricalResult()}
+  log(`${label}：版本清單共有 ${Array.isArray(versions.data.timestamps)?versions.data.timestamps.length:0} 個版本，選用第 3 個可用凌晨版本 ${timestamp}。`,"info");
+  const file=await fetchHistoricalXml(sourceUrl,timestamp,type,label);
+  if(!file.ok)return failedHistoricalResult(timestamp);
+  const filtered=file.records.filter(record=>eventDay(record.time)===targetDate);
+  log(`${label}：下載 ${file.records.length} 筆原始記錄；日期篩選後 ${filtered.length} 筆。`,"success");
+  return{ok:true,status:file.status,records:filtered,timestamp,source:file.source};
+}
+async function fetchHistoricalPortDay(targetDate,archiveDate,type){
+  const sourceUrl=historicalSource(type,"report");
+  const label=`${targetDate} ${historicalTypeName(type)}靠港報告`;
+  const versions=await fetchVersionList(sourceUrl,archiveDate,label);
+  if(!versions.ok)return failedHistoricalResult();
+  const timestamp=chooseReportTimestamp(versions.data,archiveDate);
+  if(!timestamp){log(`${label}：找不到 latest-doc-date-before-start-date。`,"warn");return failedHistoricalResult()}
+  log(`${label}：版本 API 返回精確時間 ${timestamp}。`,"info");
+  const file=await fetchHistoricalXml(sourceUrl,timestamp,type,label);
+  if(!file.ok)return failedHistoricalResult(timestamp);
+  const filtered=file.records.filter(record=>eventDay(record.time)===targetDate);
+  log(`${label}：下載 ${file.records.length} 筆原始記錄；日期篩選後 ${filtered.length} 筆。`,"success");
+  return{ok:true,status:file.status,records:filtered,timestamp,source:file.source};
+}
+function failedHistoricalResult(timestamp=null){return{ok:false,status:"failed",records:[],timestamp,source:"none"}}
+function logHistoricalMovementResult(targetDate,type,result,requested){
+  if(!requested)return;
+  const label=`${targetDate} ${historicalTypeName(type)}移動資料`;
+  if(result.ok)log(`${label}：成功，版本 ${result.timestamp}，顯示 ${result.records.length} 筆。`,"success");
+  else log(`${label}：取得失敗。`,"error");
+}
+async function fetchVersionList(sourceUrl,archiveDate,label){
+  const url=versionListUrl(sourceUrl,archiveDate);
+  const key=versionCacheKey(sourceUrl,archiveDate);
+  const cached=readJsonCache(key);
+  if(cached){log(`${label}：使用已儲存的版本清單。`,"info");return{ok:true,data:cached,source:"cache"}}
+  for(let attempt=1;attempt<=CONFIG.historicalVersionAttempts;attempt++){
+    log(`${label}：查詢 ${archiveDate} 版本清單（第 ${attempt}/${CONFIG.historicalVersionAttempts} 次）。`,"info");
+    const result=await fetchJsonRoutes(url,CONFIG.historicalTimeoutMs,label);
+    if(result.ok){writeJsonCache(key,result.data);return result}
+    if(attempt<CONFIG.historicalVersionAttempts)await sleep(200*attempt);
+  }
+  log(`${label}：版本清單取得失敗。`,"error");
+  return{ok:false,data:null,source:"none"};
+}
+async function fetchJsonRoutes(url,timeoutMs,label){
+  const routes=[{name:"版本 API",url},{name:"AllOrigins",url:CONFIG.corsProxies[0]+encodeURIComponent(url)},{name:"CorsProxy",url:CONFIG.corsProxies[1]+encodeURIComponent(url)}];
+  for(const route of routes){
+    log(`${label}：嘗試 ${route.name}。`,"info");
+    const result=await tryFetchJson(route.url,timeoutMs);
+    if(result.ok){log(`${label}：${route.name} 成功。`,"success");return{ok:true,data:result.data,source:route.name}}
+    log(`${label}：${route.name} ${result.reason}。`,"warn");
+  }
+  return{ok:false,data:null,source:"none"};
+}
+async function tryFetchJson(url,timeoutMs){
+  const controller=new AbortController();let timedOut=false;
+  const timer=setTimeout(()=>{timedOut=true;controller.abort()},timeoutMs);
+  try{
+    const response=await fetch(url,{cache:"no-store",redirect:"follow",signal:controller.signal,headers:{Accept:"application/json"}});
+    if(!response.ok)return{ok:false,reason:`HTTP ${response.status}`};
+    const text=await response.text();
+    if(!text||/<html[\s>]/i.test(text))return{ok:false,reason:"不是 JSON 回應"};
+    return{ok:true,data:JSON.parse(text)};
+  }catch(error){return{ok:false,reason:timedOut?`逾時（${timeoutMs/1000} 秒）`:"網絡或 JSON 格式錯誤"}}
+  finally{clearTimeout(timer)}
+}
+async function fetchHistoricalXml(sourceUrl,timestamp,type,label){
+  const url=historicalFileUrl(sourceUrl,timestamp);
+  const cached=readCache(url,type);
+  if(cached){const records=parseVesselXML(cached.xml,type);if(records.length){log(`${label}：使用已儲存 XML 版本 ${timestamp}。`,"info");return{ok:true,status:"cached",records,source:"cache"}}}
+  for(let attempt=1;attempt<=CONFIG.historicalFileAttempts;attempt++){
+    log(`${label}：下載版本 ${timestamp}（第 ${attempt}/${CONFIG.historicalFileAttempts} 次）。`,"info");
+    const result=await fetchXmlRoutes(url,type,CONFIG.historicalTimeoutMs,label);
+    if(result.ok){writeCache(url,type,result.xml);return{ok:true,status:"fresh",records:result.records,source:result.source}}
+    if(attempt<CONFIG.historicalFileAttempts)await sleep(200*attempt);
+  }
+  log(`${label}：版本 ${timestamp} 下載失敗。`,"error");
+  return{ok:false,status:"failed",records:[],source:"none"};
+}
+async function fetchXmlRoutes(url,type,timeoutMs,label){
+  const routes=[{name:"歷史檔案 API",url},{name:"AllOrigins",url:CONFIG.corsProxies[0]+encodeURIComponent(url)},{name:"CorsProxy",url:CONFIG.corsProxies[1]+encodeURIComponent(url)}];
+  for(const route of routes){
+    log(`${label}：嘗試 ${route.name}。`,"info");
+    const result=await tryFetchXmlDetailed(route.url,type,timeoutMs);
+    if(result.ok){log(`${label}：${route.name} 成功。`,"success");return{...result,source:route.name}}
+    log(`${label}：${route.name} ${result.reason}。`,"warn");
+  }
+  return{ok:false,records:[],xml:"",source:"none"};
+}
+async function tryFetchXmlDetailed(url,type,timeoutMs){
+  const controller=new AbortController();let timedOut=false;
+  const timer=setTimeout(()=>{timedOut=true;controller.abort()},timeoutMs);
+  try{
+    const response=await fetch(url,{cache:"no-store",redirect:"follow",signal:controller.signal,headers:{Accept:"application/xml,text/xml,*/*"}});
+    if(!response.ok)return{ok:false,records:[],xml:"",reason:`HTTP ${response.status}`};
+    const xml=await response.text();
+    if(xml.length<80)return{ok:false,records:[],xml:"",reason:"回應內容過短"};
+    if(/<!doctype\s+html|<html[\s>]|<body[\s>]/i.test(xml))return{ok:false,records:[],xml:"",reason:"傳回 HTML 錯誤頁"};
+    if(!(xml.includes("<?xml")||xml.includes("<RP0")||xml.includes("<G_SQL")))return{ok:false,records:[],xml:"",reason:"不是預期 XML"};
+    const records=parseVesselXML(xml,type);
+    return records.length?{ok:true,records,xml,reason:"成功"}:{ok:false,records:[],xml,reason:"XML 內沒有可辨識記錄"};
+  }catch(error){return{ok:false,records:[],xml:"",reason:timedOut?`逾時（${timeoutMs/1000} 秒）`:"網絡錯誤"}}
+  finally{clearTimeout(timer)}
+}
+function applyHistoricalPorts(rows,reportRows){
+  const map=portMap(reportRows);let matched=0;
+  for(const row of rows){const port=map.get(callKey(row.callSign));if(port){row.adjacentPort=port;matched++}}
+  return matched;
+}
+function versionCacheKey(sourceUrl,archiveDate){return`${CONFIG.cachePrefix}versions:${compactDate(archiveDate)}:${hashText(sourceUrl)}`}
+function hashText(value){let h=2166136261;for(const c of value){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
+function readJsonCache(key){try{return JSON.parse(localStorage.getItem(key)||"null")}catch{return null}}
+function writeJsonCache(key,data){try{localStorage.setItem(key,JSON.stringify(data))}catch{}}
+function cacheKey(url,type){return`${CONFIG.cachePrefix}xml:${type}:${hashText(url)}`}
 function readCache(url,type){try{const v=JSON.parse(localStorage.getItem(cacheKey(url,type)));return v&&v.xml?v:null}catch{return null}}
 function writeCache(url,type,xml){try{localStorage.setItem(cacheKey(url,type),JSON.stringify({savedAt:Date.now(),xml}))}catch{}}
-async function fetchXMLDataEnsured(url,type,isHistorical,maxAttempts=null){const attempts=maxAttempts||CONFIG.maxFetchAttempts;for(let attempt=1;attempt<=attempts;attempt++){log(`${isHistorical?"歷史 API":"即時 XML"} 連線中...（第 ${attempt}/${attempts} 次）`);const result=await fetchXMLDataOnce(url,type,attempt);if(result.data.length){writeCache(url,type,result.xml);return result.data}const delay=Math.max(1000,CONFIG.retryBaseDelayMs*attempt*4);log(`未取到資料，${delay}ms 後重試...`,"warn");await sleep(delay)}const cached=readCache(url,type);if(cached){log(`連線失敗，改用最近成功快取（${new Date(cached.savedAt).toLocaleString("zh-HK")}）`,"warn");const rows=parseVesselXML(cached.xml,type);if(rows.length)return rows}throw new Error("無法從資料來源取得任何資料（已多次重試）")}
-async function fetchXMLDataOnce(url,type,attemptNumber){const isMardep=url.includes("mardep.gov.hk")&&!url.includes("historical-archive");if(!isMardep){const direct=await tryFetchAndParse(url,type);if(direct.data.length)return direct}const start=((attemptNumber||1)-1)%CONFIG.corsProxies.length;for(let j=0;j<CONFIG.corsProxies.length;j++){const i=(start+j)%CONFIG.corsProxies.length,proxy=CONFIG.corsProxies[i]+encodeURIComponent(url),via=await tryFetchAndParse(proxy,type);if(via.data.length)return via;if(j<CONFIG.corsProxies.length-1)await sleep(500)}return{data:[],xml:""}}
-async function tryFetchAndParse(url,type){try{const response=await fetch(url,{cache:"no-store"});if(!response.ok)return{data:[],xml:""};const xml=await response.text();if(xml.length<80||!(xml.includes("<?xml")||xml.includes("<RP0")||xml.includes("<G_SQL")))return{data:[],xml:""};return{data:parseVesselXML(xml,type),xml}}catch{return{data:[],xml:""}}}
+async function fetchXMLDataEnsured(url,type,isHistorical,maxAttempts=null){
+  const attempts=maxAttempts||CONFIG.maxFetchAttempts;
+  for(let attempt=1;attempt<=attempts;attempt++){
+    log(`${isHistorical?"歷史 API":"即時 XML"} 連線中...（第 ${attempt}/${attempts} 次）`);
+    const result=await fetchXMLDataOnce(url,type,attempt);
+    if(result.data.length){writeCache(url,type,result.xml);return result.data}
+    if(attempt<attempts){const delay=Math.max(150,CONFIG.retryBaseDelayMs*attempt*2);log(`未取到資料，${delay}ms 後重試...`,"warn");await sleep(delay)}
+  }
+  const cached=readCache(url,type);
+  if(cached){const rows=parseVesselXML(cached.xml,type);if(rows.length){log(`連線失敗，改用最近成功快取（${new Date(cached.savedAt).toLocaleString("zh-HK")}）`,"warn");return rows}}
+  throw new Error("無法從資料來源取得任何資料（已多次重試）");
+}
+async function fetchXMLDataOnce(url,type,attemptNumber){
+  const isMardep=url.includes("mardep.gov.hk")&&!url.includes("historical-archive");
+  if(!isMardep){const direct=await tryFetchAndParse(url,type);if(direct.data.length)return direct}
+  const start=((attemptNumber||1)-1)%CONFIG.corsProxies.length;
+  for(let j=0;j<CONFIG.corsProxies.length;j++){
+    const i=(start+j)%CONFIG.corsProxies.length;
+    const via=await tryFetchAndParse(CONFIG.corsProxies[i]+encodeURIComponent(url),type);
+    if(via.data.length)return via;
+    if(j<CONFIG.corsProxies.length-1)await sleep(120);
+  }
+  return{data:[],xml:""};
+}
+async function tryFetchAndParse(url,type){
+  try{
+    const response=await fetch(url,{cache:"no-store",redirect:"follow"});
+    if(!response.ok)return{data:[],xml:""};
+    const xml=await response.text();
+    if(xml.length<80||/<html[\s>]/i.test(xml)||!(xml.includes("<?xml")||xml.includes("<RP0")||xml.includes("<G_SQL")))return{data:[],xml:""};
+    return{data:parseVesselXML(xml,type),xml};
+  }catch{return{data:[],xml:""}}
+}
+
 function parseVesselXML(xmlText,type){const doc=new DOMParser().parseFromString(xmlText,"text/xml");if(doc.querySelector("parsererror"))return[];let records=[];for(const selector of ["G_SQL1","Record","record","RECORD","row","Row","ROW"]){records=[...doc.getElementsByTagName(selector)];if(records.length)break}if(!records.length&&doc.documentElement?.children.length)records=[...doc.documentElement.children];return records.map(el=>parseVesselRecord(el,type)).filter(r=>r.vesselName)}
 function parseVesselRecord(element,type){
   const getVal=names=>{
