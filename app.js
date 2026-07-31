@@ -57,15 +57,17 @@ async function fetchHistoricalDataRangeOptimized(startDate,endDate,dataType="bot
     const archiveDate=addDateDays(targetDate,1);
     const needArrival=dataType==="both"||dataType==="arrival";
     const needDeparture=dataType==="both"||dataType==="departure";
+    const yesterday=isYesterday(targetDate);
 
     showLoading(`正在獲取 ${targetDate} 的歷史資料（${index}/${total}）...`);
     $("progressBar").style.width=`${Math.max(8,Math.round((index-1)/total*100))}%`;
-    log(`▶ [${index}/${total}] 目標日期 ${targetDate}；查詢 ${archiveDate} 的可用歷史版本。`,"info");
+    if(yesterday)log(`▶ [${index}/${total}] 目標日期 ${targetDate}（昨天）；直接嘗試 ${archiveDate} 凌晨版本。`,"info");
+    else log(`▶ [${index}/${total}] 目標日期 ${targetDate}；查詢 ${archiveDate} 的可用歷史版本。`,"info");
 
-    // Movement files are independent and can have different available timestamps.
+    // Yesterday uses direct timestamp probing; other days use list-file-versions.
     const [arrivalMovement,departureMovement]=await Promise.all([
-      needArrival?fetchHistoricalMovementDay(targetDate,archiveDate,"arrival"):Promise.resolve(notRequestedResult()),
-      needDeparture?fetchHistoricalMovementDay(targetDate,archiveDate,"departure"):Promise.resolve(notRequestedResult())
+      needArrival?(yesterday?fetchYesterdayMovementDay(targetDate,"arrival"):fetchHistoricalMovementDay(targetDate,archiveDate,"arrival")):Promise.resolve(notRequestedResult()),
+      needDeparture?(yesterday?fetchYesterdayMovementDay(targetDate,"departure"):fetchHistoricalMovementDay(targetDate,archiveDate,"departure")):Promise.resolve(notRequestedResult())
     ]);
 
     logHistoricalMovementResult(targetDate,"arrival",arrivalMovement,needArrival);
@@ -75,26 +77,30 @@ async function fetchHistoricalDataRangeOptimized(startDate,endDate,dataType="bot
     const dayDepartures=departureMovement.ok?departureMovement.records:[];
     log(`${targetDate} 移動記錄完成：抵港 ${dayArrivals.length} 筆，離港 ${dayDepartures.length} 筆。`,dayArrivals.length||dayDepartures.length?"success":"warn");
 
-    // Report timestamps are discovered from list-file-versions. No minute is guessed.
-    const reportJobs=[];
-    if(dayArrivals.length){
-      reportJobs.push(fetchHistoricalPortDay(targetDate,archiveDate,"arrival")
-        .then(result=>({type:"arrival",result})));
-    }
-    if(dayDepartures.length){
-      reportJobs.push(fetchHistoricalPortDay(targetDate,archiveDate,"departure")
-        .then(result=>({type:"departure",result})));
-    }
-    const reportResults=await Promise.all(reportJobs);
-    for(const {type,result} of reportResults){
-      const label=type==="arrival"?"抵港上一靠港":"離港下一靠港";
-      if(result.ok){
-        const rows=type==="arrival"?dayArrivals:dayDepartures;
-        const matched=applyHistoricalPorts(rows,result.records);
-        log(`${targetDate} ${label}：版本 ${result.timestamp}，報告 ${result.records.length} 筆，CALL_SIGN 配對 ${matched} 筆。`,"success");
-      }else{
-        log(`${targetDate} ${label}：未能取得報告，保留移動記錄並顯示「-」。`,"warn");
+    // Skip port reports for yesterday — no 上一靠港／下一靠港 needed.
+    if(!yesterday){
+      const reportJobs=[];
+      if(dayArrivals.length){
+        reportJobs.push(fetchHistoricalPortDay(targetDate,archiveDate,"arrival")
+          .then(result=>({type:"arrival",result})));
       }
+      if(dayDepartures.length){
+        reportJobs.push(fetchHistoricalPortDay(targetDate,archiveDate,"departure")
+          .then(result=>({type:"departure",result})));
+      }
+      const reportResults=await Promise.all(reportJobs);
+      for(const {type,result} of reportResults){
+        const label=type==="arrival"?"抵港上一靠港":"離港下一靠港";
+        if(result.ok){
+          const rows=type==="arrival"?dayArrivals:dayDepartures;
+          const matched=applyHistoricalPorts(rows,result.records);
+          log(`${targetDate} ${label}：版本 ${result.timestamp}，報告 ${result.records.length} 筆，CALL_SIGN 配對 ${matched} 筆。`,"success");
+        }else{
+          log(`${targetDate} ${label}：未能取得報告，保留移動記錄並顯示「-」。`,"warn");
+        }
+      }
+    }else{
+      log(`${targetDate}：昨天資料，略過上一靠港／下一靠港查詢。`,"info");
     }
 
     for(const record of [...dayArrivals,...dayDepartures]){
@@ -127,6 +133,7 @@ function historicalSource(type,category){
   if(category==="movement")return type==="arrival"?CONFIG.arrivalUrl:CONFIG.departureUrl;
   return type==="arrival"?CONFIG.arrivalReportUrl:CONFIG.departureReportUrl;
 }
+function isYesterday(dateString){return dateString===localYMD(new Date(Date.now()-86400000))}
 function historicalTypeName(type){return type==="arrival"?"抵港":"離港"}
 function versionListHasDate(data,archiveDate){
   const prefix=compactDate(archiveDate)+"-";
@@ -157,6 +164,26 @@ function chooseReportTimestamp(versionData,archiveDate){
   if(typeof latestFile==="string"&&/^\d{8}-\d{4}$/.test(latestFile)&&latestFile.startsWith(expectedPrefix))return latestFile;
   const timestamps=Array.isArray(versionData?.timestamps)?versionData.timestamps.filter(value=>typeof value==="string"&&value.startsWith(expectedPrefix)).sort():[];
   return timestamps.at(-1)||null;
+}
+async function fetchYesterdayMovementDay(targetDate,type){
+  const sourceUrl=historicalSource(type,"movement");
+  const label=`${targetDate} ${historicalTypeName(type)}移動資料`;
+  const today=addDateDays(targetDate,1);
+  const todayCompact=compactDate(today);
+  log(`${label}：昨天資料，直接嘗試 ${today} 的凌晨版本（每 15 分鐘遞增）。`,"info");
+  for(let mins=0;mins<1440;mins+=15){
+    const hh=String(Math.floor(mins/60)).padStart(2,"0");
+    const mm=String(mins%60).padStart(2,"0");
+    const timestamp=`${todayCompact}-${hh}${mm}`;
+    const file=await fetchHistoricalXml(sourceUrl,timestamp,type,label);
+    if(file.ok){
+      const filtered=file.records.filter(record=>eventDay(record.time)===targetDate);
+      log(`${label}：版本 ${timestamp}，下載 ${file.records.length} 筆原始記錄；日期篩選後 ${filtered.length} 筆。`,"success");
+      return{ok:true,status:file.status,records:filtered,timestamp,source:file.source};
+    }
+  }
+  log(`${label}：所有凌晨版本皆無法取得資料。`,"error");
+  return failedHistoricalResult();
 }
 async function fetchHistoricalMovementDay(targetDate,archiveDate,type){
   const sourceUrl=historicalSource(type,"movement");
