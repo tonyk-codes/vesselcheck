@@ -16,12 +16,12 @@ const CONFIG={
   historicalVersionAttempts:2,
   historicalFileAttempts:2,
   historicalDayDelayMs:150,
-  cachePrefix:"vesselcheck-v6:"
+  cachePrefix:"vesselcheck-v7:"
 };
 let currentData=[];
 const $=id=>document.getElementById(id);
 document.addEventListener("DOMContentLoaded",()=>{setDefaultDates();$("useLast36h").addEventListener("change",()=>syncMode("recent"));$("useFuture").addEventListener("change",()=>syncMode("future"));$("startDate").addEventListener("change",()=>{if(!$("useLast36h").checked&&!$("useFuture").checked){$("endDate").focus();if(typeof $("endDate").showPicker==="function")$("endDate").showPicker()}});$("searchBtn").addEventListener("click",performSearch);$("clearBtn").addEventListener("click",clearSearch);$("vesselName").addEventListener("keydown",e=>{if(e.key==="Enter")performSearch()});syncMode("recent",true)});
-function setDefaultDates(){const today=localYMD(new Date()),yesterday=localYMD(new Date(Date.now()-86400000));$("startDate").value=yesterday;$("endDate").value=today}
+function setDefaultDates(){const yesterday=localYMD(new Date(Date.now()-86400000));$("startDate").max=yesterday;$("endDate").max=yesterday;$("startDate").value=yesterday;$("endDate").value=yesterday}
 function localYMD(d){const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Asia/Hong_Kong",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(d),v=Object.fromEntries(p.map(x=>[x.type,x.value]));return`${v.year}-${v.month}-${v.day}`}
 function syncMode(changed,initial=false){const recent=$("useLast36h"),future=$("useFuture");if(changed==="recent"&&recent.checked)future.checked=false;if(changed==="future"&&future.checked)recent.checked=false;const special=recent.checked||future.checked;$("startDate").disabled=special;$("endDate").disabled=special;$("modeHint").textContent=future.checked?"未來船期直接讀取海事處最新 XML，日期範圍不適用。":recent.checked?"可查詢最近 36 小時，或取消勾選查詢最多 20 天的歷史資料。":"可選擇最多 20 天的歷史日期範圍。";if(!initial)clearResults()}
 function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
@@ -128,6 +128,11 @@ function historicalSource(type,category){
   return type==="arrival"?CONFIG.arrivalReportUrl:CONFIG.departureReportUrl;
 }
 function historicalTypeName(type){return type==="arrival"?"抵港":"離港"}
+function versionListHasDate(data,archiveDate){
+  const prefix=compactDate(archiveDate)+"-";
+  const timestamps=Array.isArray(data?.timestamps)?data.timestamps:[];
+  return timestamps.some(v=>typeof v==="string"&&v.startsWith(prefix));
+}
 function versionListUrl(sourceUrl,dateString){
   const date=compactDate(dateString);
   return`${CONFIG.historicalVersionListBase}?url=${encodeURIComponent(sourceUrl)}&start=${date}&end=${date}`;
@@ -191,12 +196,13 @@ function logHistoricalMovementResult(targetDate,type,result,requested){
 async function fetchVersionList(sourceUrl,archiveDate,label){
   const url=versionListUrl(sourceUrl,archiveDate);
   const key=versionCacheKey(sourceUrl,archiveDate);
-  const cached=readJsonCache(key);
-  if(cached){log(`${label}：使用已儲存的版本清單。`,"info");return{ok:true,data:cached,source:"cache"}}
+  const cached=readJsonCache(key,3600000);
+  if(cached&&versionListHasDate(cached,archiveDate)){log(`${label}：使用已儲存的版本清單。`,"info");return{ok:true,data:cached,source:"cache"}}
+  if(cached){log(`${label}：快取版本清單不包含 ${archiveDate} 的資料，重新查詢。`,"warn");localStorage.removeItem(key)}
   for(let attempt=1;attempt<=CONFIG.historicalVersionAttempts;attempt++){
     log(`${label}：查詢 ${archiveDate} 版本清單（第 ${attempt}/${CONFIG.historicalVersionAttempts} 次）。`,"info");
     const result=await fetchJsonRoutes(url,CONFIG.historicalTimeoutMs,label);
-    if(result.ok){writeJsonCache(key,result.data);return result}
+    if(result.ok&&result.data){const hasTimestamps=Array.isArray(result.data.timestamps)&&result.data.timestamps.length>0;if(hasTimestamps)writeJsonCache(key,result.data);else log(`${label}：版本清單無可用時間，不儲存快取。`,"warn");return{ok:true,data:result.data,source:result.source}}
     if(attempt<CONFIG.historicalVersionAttempts)await sleep(200*attempt);
   }
   log(`${label}：版本清單取得失敗。`,"error");
@@ -269,8 +275,8 @@ function applyHistoricalPorts(rows,reportRows){
 }
 function versionCacheKey(sourceUrl,archiveDate){return`${CONFIG.cachePrefix}versions:${compactDate(archiveDate)}:${hashText(sourceUrl)}`}
 function hashText(value){let h=2166136261;for(const c of value){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
-function readJsonCache(key){try{return JSON.parse(localStorage.getItem(key)||"null")}catch{return null}}
-function writeJsonCache(key,data){try{localStorage.setItem(key,JSON.stringify(data))}catch{}}
+function readJsonCache(key,maxAgeMs){try{const obj=JSON.parse(localStorage.getItem(key)||"null");if(!obj||!obj.data)return null;if(maxAgeMs&&typeof obj.savedAt==="number"&&(Date.now()-obj.savedAt>maxAgeMs)){localStorage.removeItem(key);return null}return obj.data}catch{return null}}
+function writeJsonCache(key,data){try{localStorage.setItem(key,JSON.stringify({savedAt:Date.now(),data}))}catch{}}
 function cacheKey(url,type){return`${CONFIG.cachePrefix}xml:${type}:${hashText(url)}`}
 function readCache(url,type){try{const v=JSON.parse(localStorage.getItem(cacheKey(url,type)));return v&&v.xml?v:null}catch{return null}}
 function writeCache(url,type,xml){try{localStorage.setItem(cacheKey(url,type),JSON.stringify({savedAt:Date.now(),xml}))}catch{}}
