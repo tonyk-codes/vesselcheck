@@ -153,8 +153,8 @@ function chooseMovementTimestamp(versionData,archiveDate){
   const valid=timestamps.filter(value=>typeof value==="string"&&/^\d{8}-\d{4}$/.test(value)&&value.startsWith(prefix)).sort();
   if(!valid.length)return null;
   const early=valid.filter(value=>{const hhmm=value.slice(-4);return hhmm>="0000"&&hhmm<="1200"});
-  // Prefer the third actual early version; otherwise second, first, then earliest actual version.
-  return early[2]||early[1]||early[0]||valid[0];
+  // Prefer the seventh actual early version; otherwise sixth, fifth, fourth, third, second, first, then earliest actual version.
+  return early[6]||early[5]||early[4]||early[3]||early[2]||early[1]||early[0]||valid[0];
 }
 function chooseReportTimestamp(versionData,archiveDate){
   const expectedPrefix=`${compactDate(archiveDate)}-`;
@@ -170,8 +170,8 @@ async function fetchYesterdayMovementDay(targetDate,type){
   const label=`${targetDate} ${historicalTypeName(type)}移動資料`;
   const today=addDateDays(targetDate,1);
   const todayCompact=compactDate(today);
-  log(`${label}：昨天資料，直接嘗試 ${today} 的凌晨版本（每 15 分鐘遞增）。`,"info");
-  for(let mins=0;mins<1440;mins+=15){
+  log(`${label}：昨天資料，直接嘗試 ${today} 的版本（0130 至 1300，每 15 分鐘遞增）。`,"info");
+  for(let mins=90;mins<=780;mins+=15){
     const hh=String(Math.floor(mins/60)).padStart(2,"0");
     const mm=String(mins%60).padStart(2,"0");
     const timestamp=`${todayCompact}-${hh}${mm}`;
